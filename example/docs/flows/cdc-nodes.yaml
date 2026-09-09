@@ -1,0 +1,15 @@
+nodes:
+  DB:
+    summary: Source database where committed changes originate.
+    doc: concepts/cdc.md
+  CDC:
+    summary: CDC connector reads the transaction log and emits change events.
+    doc: concepts/cdc.md
+  KAFKA:
+    summary: Durable event stream used by downstream consumers.
+    doc: https://kafka.apache.org/
+  CONSUMER:
+    summary: Application service that applies CDC events to a target system.
+  TARGET:
+    summary: Target database kept in sync by replaying change events.
+    doc: concepts/cdc.md

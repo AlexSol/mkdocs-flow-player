@@ -22,6 +22,7 @@ class Directive:
     diagram: str
     scenarios: tuple[str, ...]
     title: Optional[str] = None
+    metadata: Optional[str] = None
 
     @property
     def scenario(self) -> str:
@@ -59,12 +60,14 @@ def parse_directive(body: str) -> Directive:
         raise FlowError(f"interactive-flow directive is missing: {', '.join(missing)}")
     if has_scenario and has_scenarios:
         raise FlowError("interactive-flow directive must use either scenario or scenarios, not both")
-    if set(data) - {"diagram", "scenario", "scenarios", "title"}:
-        raise FlowError("Unknown directive field; expected diagram, scenario, scenarios or title")
+    if set(data) - {"diagram", "scenario", "scenarios", "title", "metadata"}:
+        raise FlowError("Unknown directive field; expected diagram, scenario, scenarios, title or metadata")
     if not isinstance(data["diagram"], str):
         raise FlowError("diagram path must be a string")
     if "title" in data and not isinstance(data["title"], str):
         raise FlowError("title must be a string")
+    if "metadata" in data and not isinstance(data["metadata"], str):
+        raise FlowError("metadata path must be a string")
     if has_scenario:
         if not isinstance(data["scenario"], str):
             raise FlowError("scenario path must be a string")
@@ -75,7 +78,7 @@ def parse_directive(body: str) -> Directive:
                 or any(not isinstance(item, str) or not item for item in scenarios_data)):
             raise FlowError("scenarios must be a non-empty list of paths")
         scenarios = tuple(scenarios_data)
-    return Directive(diagram=data["diagram"], scenarios=scenarios, title=data.get("title"))
+    return Directive(diagram=data["diagram"], scenarios=scenarios, title=data.get("title"), metadata=data.get("metadata"))
 
 
 def replace_directives(markdown: str, render: Callable[[str], str]) -> str:

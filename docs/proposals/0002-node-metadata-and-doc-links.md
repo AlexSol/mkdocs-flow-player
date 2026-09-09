@@ -1,6 +1,6 @@
 # 0002 — Node metadata and documentation links
 
-**Status:** Draft — needs decision
+**Status:** Implemented
 **Roadmap item:** "Add node metadata/details and documentation links"
 
 ## Problem
@@ -35,21 +35,19 @@ a step targets that node, independent of the step's own `title`/`description`.
 - **D. a comment / frontmatter block inside the `.mmd`.** Keeps it with the
   topology but needs non-standard parsing.
 
-Leaning **C** (pairs naturally with 0001); **B** if scenarios-sharing-topology
-does not land.
+Implemented as **C**.
 
 ## Rendering
 
 - When a node step is active, the details panel shows the node's `summary` plus
-  the step's own `description` (see open question 1), and a doc link.
+  the step's own `description`, and a doc link.
 - Links: internal paths resolved like MkDocs links; external forced to
   `target="_blank" rel="noopener noreferrer"`; only `http(s)` and site-relative
   allowed, validated at build.
 
 ## Open questions
 
-1. Precedence of step `description` vs node `summary` — replace, or show both
-   (node context first, step detail second)?
-2. Do edges get metadata too, or nodes only for now?
-3. Field set: `summary`, `doc`, `icon`, `type`? Keep it minimal for v1.
-4. Should the node label itself become a link in the SVG, or only the panel?
+1. Node context and step detail are both shown; node context appears first.
+2. Nodes only for now.
+3. Field set is `summary` and `doc`.
+4. Links appear only in the details panel.

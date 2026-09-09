@@ -45,6 +45,7 @@ Or share one topology across several selectable scenarios:
 ::: interactive-flow
 title: CDC replication
 diagram: flows/cdc.mmd
+metadata: flows/cdc-nodes.yaml
 scenarios:
   - flows/cdc-normal.yaml
   - flows/cdc-target-offline.yaml
@@ -167,6 +168,7 @@ scenario picker:
 ::: interactive-flow
 title: CDC replication
 diagram: flows/cdc.mmd
+metadata: flows/cdc-nodes.yaml
 scenarios:
   - flows/cdc-normal.yaml
   - flows/cdc-target-offline.yaml
@@ -253,6 +255,24 @@ non-string object keys, cyclic aliases and nesting beyond 64 levels are rejected
 must be a non-empty list of YAML paths and renders a combo-box in the player
 header. Optional `title` labels the shared player; without it, the first
 scenario's title is used.
+
+Optional `metadata` points at a sidecar YAML file shared by every scenario for
+that topology:
+
+```yaml
+nodes:
+  DB:
+    summary: Source database where committed changes originate.
+    doc: concepts/cdc.md
+  KAFKA:
+    summary: Durable event stream used by downstream consumers.
+    doc: https://kafka.apache.org/
+```
+
+`summary` is shown whenever a node step targets that node. `doc` adds a "Learn
+more" link in the details panel. Docs-relative `.md` links are validated at build
+time and emitted as `.html`; `http` and `https` links open in a separate browsing
+context. Root-relative links and same-page anchors are allowed as written.
 
 ### Editor autocomplete
 

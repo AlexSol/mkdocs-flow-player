@@ -4,7 +4,9 @@ import logging
 import html
 from importlib.resources import files
 from pathlib import Path
+import posixpath
 import shutil
+from urllib.parse import urlsplit
 
 from mkdocs.config import config_options
 from mkdocs.exceptions import PluginError
@@ -12,7 +14,7 @@ from mkdocs.plugins import BasePlugin
 
 from .parser import FlowError, load_topology, load_yaml, parse_directive, replace_directives
 from .renderer import render_player
-from .validator import validate_scenario
+from .validator import validate_metadata, validate_scenario
 
 
 log = logging.getLogger("mkdocs.plugins.flow-player")
@@ -50,6 +52,12 @@ class FlowPlayerPlugin(BasePlugin):
                 directive = parse_directive(body)
                 diagram_path = self._safe_path(docs_dir, directive.diagram)
                 topology = load_topology(diagram_path)
+                metadata = {}
+                if directive.metadata:
+                    metadata_path = self._safe_path(docs_dir, directive.metadata)
+                    metadata = load_yaml(metadata_path)
+                    validate_metadata(metadata, topology)
+                    self._resolve_metadata_docs(metadata, docs_dir, page.file.src_path)
                 scenarios = []
                 for scenario_ref in directive.scenarios:
                     scenario_path = self._safe_path(docs_dir, scenario_ref)
@@ -57,7 +65,7 @@ class FlowPlayerPlugin(BasePlugin):
                     validate_scenario(scenario, topology)
                     self._claim_flow_id(scenario["id"], page.file.src_path)
                     scenarios.append(scenario)
-                return render_player(topology.source, scenarios, directive.title)
+                return render_player(topology.source, scenarios, directive.title, metadata)
             except FlowError as exc:
                 message = f"{page.file.src_path}: {exc}"
                 if self.config["validation"] == "strict":
@@ -95,3 +103,35 @@ class FlowPlayerPlugin(BasePlugin):
         if candidate != root and root not in candidate.parents:
             raise FlowError(f"Path escapes docs_dir: {relative}")
         return candidate
+
+    @staticmethod
+    def _resolve_metadata_docs(metadata: dict, docs_dir: Path, page_src_path: str) -> None:
+        for node in metadata.get("nodes", {}).values():
+            doc = node.get("doc")
+            if not doc:
+                continue
+            parts = urlsplit(doc)
+            if parts.scheme:
+                if parts.scheme not in {"http", "https"} or parts.netloc == "":
+                    raise FlowError(f"Unsupported metadata doc URL: {doc}")
+                node["doc_href"] = doc
+                node["doc_external"] = True
+                continue
+            if doc.startswith("#") or doc.startswith("/"):
+                node["doc_href"] = doc
+                node["doc_external"] = False
+                continue
+            target = FlowPlayerPlugin._safe_path(docs_dir, parts.path)
+            if not target.exists():
+                raise FlowError(f"Metadata doc target does not exist: {doc}")
+            target_rel = target.relative_to(docs_dir.resolve()).as_posix()
+            if target.suffix.lower() == ".md":
+                target_rel = target_rel[:-3] + ".html"
+            page_dir = posixpath.dirname(page_src_path)
+            href = posixpath.relpath(target_rel, page_dir) if page_dir else target_rel
+            if parts.query:
+                href += f"?{parts.query}"
+            if parts.fragment:
+                href += f"#{parts.fragment}"
+            node["doc_href"] = href
+            node["doc_external"] = False

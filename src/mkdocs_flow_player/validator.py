@@ -6,6 +6,31 @@ from .parser import ALLOWED_STATES, Edge, FlowError, Topology
 from .serialization import json_value
 
 
+def validate_metadata(metadata: dict[str, Any], topology: Topology) -> None:
+    if not isinstance(metadata, dict):
+        raise FlowError("Metadata must be a mapping")
+    json_value(metadata)
+    if set(metadata) - {"nodes"}:
+        raise FlowError("Unknown metadata field; expected nodes")
+    nodes = metadata.get("nodes", {})
+    if not isinstance(nodes, dict):
+        raise FlowError("metadata.nodes must be a mapping")
+    for node_id, node in nodes.items():
+        if not isinstance(node_id, str) or not node_id:
+            raise FlowError("metadata node IDs must be non-empty strings")
+        if node_id not in topology.nodes:
+            known = ", ".join(sorted(topology.nodes))
+            raise FlowError(f"Metadata references unknown node '{node_id}'. Known nodes: {known}")
+        if not isinstance(node, dict):
+            raise FlowError(f"Metadata for node '{node_id}' must be a mapping")
+        if set(node) - {"summary", "doc"}:
+            raise FlowError(f"Metadata for node '{node_id}' contains unknown fields")
+        if "summary" in node and not isinstance(node["summary"], str):
+            raise FlowError(f"Metadata for node '{node_id}' summary must be a string")
+        if "doc" in node and (not isinstance(node["doc"], str) or not node["doc"]):
+            raise FlowError(f"Metadata for node '{node_id}' doc must be a non-empty string")
+
+
 def _describe_edge(edge: Edge) -> str:
     label = f" label={edge.label!r}" if edge.label is not None else ""
     return f"{edge.left}->{edge.right} nth={edge.index}{label}"

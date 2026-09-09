@@ -8,6 +8,7 @@ function element() {
     dataset: {}, isConnected: true, textContent: '', listeners: {},
     classList: { add: (...v) => v.forEach(x => classes.add(x)), remove: (...v) => v.forEach(x => classes.delete(x)), contains: x => classes.has(x) },
     classes, setAttribute(k, v) { this[k] = String(v); },
+    removeAttribute(k) { delete this[k]; },
     addEventListener(type, handler) { this.listeners[type] = handler; },
     dispatch(type) { this.listeners[type]?.({ target: this }); },
     appendChild(child) { if (child) child.parentNode = this; return child; },
@@ -26,9 +27,12 @@ function fixture(steps = [{ node: 'A', state: 'error' }, { node: 'A', state: 'su
   const path = { id: 'flow-player-1-L_A_B_0', parentNode: { appendChild() {}, parentNode: diagramRoot }, getTotalLength: () => 100, getPointAtLength: x => ({ x, y: 0 }) };
   const svg = { querySelectorAll: selector => selector === 'g.node' ? nodes : [path] };
   const fields = new Map();
-  for (const name of ['scenario', 'mermaid', 'canvas', 'counter', 'step-title', 'description', 'payload']) fields.set(`.flow-player__${name}`, element());
+  for (const name of ['scenario', 'mermaid', 'metadata', 'canvas', 'counter', 'step-title', 'node-summary', 'description', 'payload']) fields.set(`.flow-player__${name}`, element());
+  const docLink = element();
+  fields.set('.flow-player__node-doc', Object.assign(element(), { querySelector: () => docLink, link: docLink }));
   if (extra.select) fields.set('.flow-player__scenario-select', Object.assign(element(), { value: '0', tagName: 'SELECT' }));
   fields.get('.flow-player__scenario').textContent = JSON.stringify(extra.scenarios ?? { id: 'test', settings: { step_duration: 1000 }, steps });
+  fields.get('.flow-player__metadata').textContent = JSON.stringify(extra.metadata ?? { nodes: {} });
   fields.get('.flow-player__mermaid').textContent = JSON.stringify('flowchart LR\nA --> B');
   root.querySelector = selector => selector === 'svg' ? svg : fields.get(selector);
   root.querySelectorAll = () => controls;
@@ -115,6 +119,35 @@ test('scenario select switches scenarios and resets playback', () => {
   assert.equal(player.currentStep, -1);
   assert.equal(root.dataset.flowId, 'two');
   assert.equal(fields.get('.flow-player__counter').textContent, 'Ready');
+});
+
+test('node metadata summary and doc link render for node steps', () => {
+  const { player, fields } = fixture(
+    [{ node: 'A', title: 'Node A' }, { edge: { from: 'A', to: 'B' } }],
+    { metadata: { nodes: { A: { summary: 'Alpha context', doc_href: 'a.html' } } } },
+  );
+
+  player.next();
+  assert.equal(fields.get('.flow-player__node-summary').hidden, false);
+  assert.equal(fields.get('.flow-player__node-summary').textContent, 'Alpha context');
+  assert.equal(fields.get('.flow-player__node-doc').hidden, false);
+  assert.equal(fields.get('.flow-player__node-doc').link.href, 'a.html');
+  assert.equal(fields.get('.flow-player__node-doc').link.textContent, 'Learn more');
+
+  player.next();
+  assert.equal(fields.get('.flow-player__node-summary').hidden, true);
+  assert.equal(fields.get('.flow-player__node-doc').hidden, true);
+});
+
+test('external metadata doc links open in a separate browsing context', () => {
+  const { player, fields } = fixture(
+    [{ node: 'A' }],
+    { metadata: { nodes: { A: { doc_href: 'https://example.com/a', doc_external: true } } } },
+  );
+
+  player.next();
+  assert.equal(fields.get('.flow-player__node-doc').link.target, '_blank');
+  assert.equal(fields.get('.flow-player__node-doc').link.rel, 'noopener noreferrer');
 });
 
 test('keyboard events inside the scenario select are left to the browser', () => {

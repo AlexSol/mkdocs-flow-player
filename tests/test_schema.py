@@ -20,7 +20,7 @@ def test_state_enum_matches_the_parser():
     assert set(SCHEMA["$defs"]["state"]["enum"]) == ALLOWED_STATES
 
 
-@pytest.mark.parametrize("name", sorted(path.name for path in EXAMPLES.glob("*.yaml")))
+@pytest.mark.parametrize("name", sorted(path.name for path in EXAMPLES.glob("*.yaml") if not path.name.endswith("-nodes.yaml")))
 def test_bundled_example_scenarios_conform(name):
     VALIDATOR.validate(yaml.safe_load((EXAMPLES / name).read_text(encoding="utf-8")))
 

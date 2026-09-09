@@ -19,6 +19,7 @@
       const scenarioData = JSON.parse(element.querySelector(".flow-player__scenario").textContent);
       this.scenarios = Array.isArray(scenarioData) ? scenarioData : [scenarioData];
       this.scenario = this.scenarios[0];
+      this.metadata = JSON.parse(element.querySelector(".flow-player__metadata")?.textContent ?? '{"nodes":{}}');
       this.source = JSON.parse(element.querySelector(".flow-player__mermaid").textContent);
       this.currentStep = -1;
       this.playing = false;
@@ -257,10 +258,33 @@
 
     renderDetails() {
       const step = this.scenario.steps[this.currentStep];
+      const node = step?.node ? this.metadata.nodes?.[step.node] : null;
       this.element.querySelector(".flow-player__counter").textContent = step
         ? `Step ${this.currentStep + 1}/${this.scenario.steps.length}` : "Ready";
       this.element.querySelector(".flow-player__step-title").textContent = step
         ? (step.title ?? step.edge?.label ?? `Step ${this.currentStep + 1}`) : "Select Next to start";
+      const summary = this.element.querySelector(".flow-player__node-summary");
+      summary.hidden = !node?.summary;
+      summary.textContent = node?.summary ?? "";
+      const doc = this.element.querySelector(".flow-player__node-doc");
+      const link = doc.querySelector("a");
+      doc.hidden = !node?.doc_href;
+      if (node?.doc_href) {
+        link.href = node.doc_href;
+        link.textContent = "Learn more";
+        if (node.doc_external) {
+          link.target = "_blank";
+          link.rel = "noopener noreferrer";
+        } else {
+          link.removeAttribute("target");
+          link.removeAttribute("rel");
+        }
+      } else {
+        link.removeAttribute("href");
+        link.removeAttribute("target");
+        link.removeAttribute("rel");
+        link.textContent = "";
+      }
       this.element.querySelector(".flow-player__description").textContent = step?.description ?? "";
       const payload = this.element.querySelector(".flow-player__payload");
       const hasPayload = step && Object.prototype.hasOwnProperty.call(step, "payload");

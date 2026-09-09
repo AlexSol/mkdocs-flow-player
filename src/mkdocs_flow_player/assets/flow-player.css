@@ -133,6 +133,11 @@
 .flow-player__details { border-top: 1px solid var(--flow-border); min-height: 7rem; }
 .flow-player__counter { color: var(--flow-muted); font-size: 0.8rem; }
 .flow-player__step-title { margin: 0.3rem 0; }
+.flow-player__node-summary {
+  margin: 0.25rem 0;
+  color: var(--flow-muted);
+}
+.flow-player__node-doc { margin: 0.25rem 0; }
 .flow-player__description { margin: 0.25rem 0; }
 .flow-player__payload {
   margin: 0.75rem 0 0;

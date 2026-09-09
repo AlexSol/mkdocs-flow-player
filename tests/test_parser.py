@@ -13,9 +13,10 @@ def test_parse_directive():
 
 
 def test_parse_directive_with_scenarios():
-    directive = parse_directive("title: Demo\ndiagram: flows/a.mmd\nscenarios:\n- flows/a.yaml\n- flows/b.yaml")
+    directive = parse_directive("title: Demo\ndiagram: flows/a.mmd\nmetadata: flows/nodes.yaml\nscenarios:\n- flows/a.yaml\n- flows/b.yaml")
     assert directive.diagram == "flows/a.mmd"
     assert directive.title == "Demo"
+    assert directive.metadata == "flows/nodes.yaml"
     assert directive.scenario == "flows/a.yaml"
     assert directive.scenarios == ("flows/a.yaml", "flows/b.yaml")
 

@@ -7,6 +7,7 @@ This page uses Mermaid topologies with execution scenarios.
 ::: interactive-flow
 title: CDC replication
 diagram: flows/cdc.mmd
+metadata: flows/cdc-nodes.yaml
 scenarios:
   - flows/cdc-normal.yaml
   - flows/cdc-target-offline.yaml
@@ -24,6 +25,7 @@ scenario: flows/cdc-use-case.yaml
 ::: interactive-flow
 title: Outbox pattern
 diagram: flows/outbox.mmd
+metadata: flows/outbox-nodes.yaml
 scenarios:
   - flows/outbox-dual-write-failure.yaml
   - flows/outbox-atomic-publish.yaml

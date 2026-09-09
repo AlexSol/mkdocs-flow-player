@@ -93,9 +93,10 @@ def test_script_data_roundtrips_without_html_injection(closing):
     parsed = InspectHTML()
     parsed.feed(render_player(source, scenario))
     assert "img" not in parsed.tags
-    assert len(parsed.scripts) == 2
+    assert len(parsed.scripts) == 3
     assert json.loads(parsed.scripts[0]) == source
     assert json.loads(parsed.scripts[1]) == scenario
+    assert json.loads(parsed.scripts[2]) == {"nodes": {}}
 
 
 @pytest.mark.parametrize("step", [
@@ -231,6 +232,34 @@ def test_selectable_scenarios_render_one_player(tmp_path):
     assert html.count('class="flow-player"') == 1
     assert 'class="flow-player__scenario-select"' in html
     assert '"id": "one"' in html and '"id": "two"' in html
+
+
+def test_metadata_sidecar_validates_nodes_and_resolves_docs(tmp_path):
+    (tmp_path / "concepts").mkdir()
+    (tmp_path / "concepts/a.md").write_text("# A")
+    (tmp_path / "a.mmd").write_text("flowchart LR\nA --> B")
+    (tmp_path / "a.yaml").write_text("id: one\nsteps:\n- node: A\n- node: B")
+    (tmp_path / "nodes.yaml").write_text(
+        "nodes:\n"
+        "  A:\n"
+        "    summary: Alpha node\n"
+        "    doc: concepts/a.md\n"
+        "  B:\n"
+        "    summary: Beta node\n"
+        "    doc: https://example.com/b\n"
+    )
+    directive = "::: interactive-flow\ndiagram: a.mmd\nmetadata: nodes.yaml\nscenario: a.yaml\n:::"
+    cfg = SimpleNamespace(docs_dir=str(tmp_path))
+    plugin = FlowPlayerPlugin()
+    plugin.load_config({"validation": "strict"})
+    page = SimpleNamespace(file=SimpleNamespace(src_path="index.md"))
+
+    html = plugin.on_page_markdown(directive, page, cfg, None)
+
+    assert '"summary": "Alpha node"' in html
+    assert '"doc_href": "concepts/a.html"' in html
+    assert '"doc_href": "https://example.com/b"' in html
+    assert '"doc_external": true' in html
 
 
 def test_mermaid_url_default_injects_cdn():

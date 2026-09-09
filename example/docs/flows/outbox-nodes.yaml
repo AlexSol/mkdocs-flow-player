@@ -1,0 +1,20 @@
+nodes:
+  APP:
+    summary: Writes business data and records a domain event request.
+    doc: concepts/outbox.md
+  DB:
+    summary: Stores the business transaction.
+    doc: concepts/outbox.md
+  OUTBOX:
+    summary: Durable table that stores events in the same transaction as business data.
+    doc: concepts/outbox.md
+  RELAY:
+    summary: Background worker that publishes pending outbox rows and marks them sent.
+    doc: concepts/outbox.md
+  BROKER:
+    summary: Message broker that fans events out to downstream consumers.
+  CONSUMER:
+    summary: Downstream service that handles published events.
+  READMODEL:
+    summary: Projection or cache updated from consumed events.
+    doc: concepts/outbox.md

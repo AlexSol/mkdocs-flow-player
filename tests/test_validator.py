@@ -1,7 +1,7 @@
 import pytest
 
 from mkdocs_flow_player.parser import Edge, FlowError, Topology
-from mkdocs_flow_player.validator import validate_scenario
+from mkdocs_flow_player.validator import validate_metadata, validate_scenario
 
 
 TOPOLOGY = Topology("", frozenset({"A", "B"}), (Edge("A", "B", 1),))
@@ -22,6 +22,26 @@ def test_valid_scenario():
 def test_unknown_node():
     with pytest.raises(FlowError, match="unknown node 'C'"):
         validate_scenario({"id": "bad", "steps": [{"node": "C"}]}, TOPOLOGY)
+
+
+def test_valid_metadata():
+    validate_metadata(
+        {"nodes": {"A": {"summary": "Source node", "doc": "concepts/a.md"}, "B": {}}},
+        TOPOLOGY,
+    )
+
+
+@pytest.mark.parametrize("metadata", [
+    {"extra": {}},
+    {"nodes": []},
+    {"nodes": {"C": {"summary": "Unknown"}}},
+    {"nodes": {"A": {"summary": 1}}},
+    {"nodes": {"A": {"doc": ""}}},
+    {"nodes": {"A": {"icon": "db"}}},
+])
+def test_invalid_metadata(metadata):
+    with pytest.raises(FlowError):
+        validate_metadata(metadata, TOPOLOGY)
 
 
 def test_unknown_edge():

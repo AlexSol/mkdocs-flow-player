@@ -13,6 +13,7 @@ def render_player(
     diagram: str,
     scenarios: Union[dict[str, Any], list[dict[str, Any]]],
     title: Optional[str] = None,
+    metadata: Optional[dict[str, Any]] = None,
 ) -> str:
     scenario_list = [scenarios] if isinstance(scenarios, dict) else scenarios
     current = scenario_list[0]
@@ -31,10 +32,12 @@ def render_player(
     </label>"""
     diagram_text = script_json(diagram)
     scenario_json = script_json(scenario_list if len(scenario_list) > 1 else current)
+    metadata_json = script_json(metadata or {"nodes": {}})
     return f"""<div class="flow-player" data-flow-id="{flow_id}" role="group" aria-roledescription="Interactive flow" aria-label="{heading}">
   <header class="flow-player__header"><strong class="flow-player__title">{heading}</strong>{scenario_options}</header>
   <script type="application/json" class="flow-player__mermaid">{diagram_text}</script>
   <script type="application/json" class="flow-player__scenario">{scenario_json}</script>
+  <script type="application/json" class="flow-player__metadata">{metadata_json}</script>
   <div class="flow-player__canvas" role="img" tabindex="0" aria-label="{heading} diagram"></div>
   <nav class="flow-player__controls" aria-label="Flow controls">
     <button type="button" data-action="reset">Reset</button>
@@ -45,6 +48,8 @@ def render_player(
   <section class="flow-player__details" aria-live="polite">
     <div class="flow-player__counter">Ready</div>
     <h4 class="flow-player__step-title">Select Next to start</h4>
+    <p class="flow-player__node-summary" hidden></p>
+    <p class="flow-player__node-doc" hidden><a href=""></a></p>
     <p class="flow-player__description"></p>
     <pre class="flow-player__payload" hidden></pre>
   </section>
