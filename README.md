@@ -286,6 +286,18 @@ and <kbd>End</kbd> jumps to the last step. A control that disables itself at an 
 of the range hands focus to Play. The details panel is an `aria-live` region, so
 each step is announced.
 
+### Theme and layout
+
+Colours are driven by CSS custom properties on `.flow-player`. On Material for
+MkDocs they inherit its palette and follow its light/dark toggle
+(`[data-md-color-scheme]`); on other themes they fall back to CSS system colours,
+which track the OS. In dark mode the state colours brighten and Mermaid's
+light-theme SVG is re-tinted so the diagram matches the page. Below ~30rem the
+padding tightens and the controls become full-width tap targets; a wide diagram
+scrolls inside the canvas rather than the page. `prefers-reduced-motion` hides the
+travelling marker. Override any `--flow-*` token in your own stylesheet to
+restyle.
+
 ### Tests
 
 ```bash
@@ -321,4 +333,5 @@ plugin config to use another compatible build or a [vendored copy](#config-optio
 - YAML is converted to JSON at build time.
 - No React, React Flow, JointJS, D3, backend or browser-side YAML parser.
 
-See [TODO.md](TODO.md) for current status and the roadmap.
+See [TODO.md](TODO.md) for current status and the roadmap, and
+[docs/proposals/](docs/proposals/) for roadmap items still under design.

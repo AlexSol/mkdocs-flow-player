@@ -4,6 +4,10 @@
   let renderSequence = 0;
   let mermaidConfigured = false;
 
+  function escapeRegExp(value) {
+    return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  }
+
   class FlowPlayer {
     constructor(element, clock = {
       now: () => performance.now(),
@@ -170,18 +174,21 @@
     }
 
     findNode(id) {
-      // Mermaid >= 11 prefixes element ids with the render id (e.g. "flow-player-1-flowchart-DB-0"),
-      // so match the "flowchart-<id>-<n>" segment rather than the whole id.
+      const nodePattern = new RegExp(`(?:^|[-_:])flowchart-${escapeRegExp(id)}-\\d+$`);
       return Array.from(this.svg.querySelectorAll("g.node")).find((node) => {
-        if (node.dataset.id === id) return true;
-        const match = /(?:^|-)flowchart-(.+)-\d+$/.exec(node.id);
-        return match !== null && match[1] === id;
+        if (node.dataset?.id === id) return true;
+        if (node.id === id) return true;
+        return nodePattern.test(node.id);
       });
     }
 
     findEdge(from, to) {
-      const pattern = new RegExp(`(?:^|-)L_${from}_${to}_\\d+$`);
-      return Array.from(this.svg.querySelectorAll("path")).find((path) => pattern.test(path.id));
+      const edgeId = `L_${from}_${to}`;
+      const edgePattern = new RegExp(`(?:^|[-_:])${escapeRegExp(edgeId)}_\\d+$`);
+      return Array.from(this.svg.querySelectorAll("path")).find((path) => {
+        if (path.dataset?.id === edgeId) return true;
+        return edgePattern.test(path.id);
+      });
     }
 
     animateEdge(from, to) {

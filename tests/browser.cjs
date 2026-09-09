@@ -83,7 +83,21 @@ const http = require('node:http');
     await page.waitForFunction(() => document.querySelectorAll('.flow-player svg').length === 2);
     await page.waitForFunction(() => [...document.querySelectorAll('[data-flow-id] [data-action="next"]')].every(b => !b.disabled));
     assert.deepEqual(errors, []);
-    console.log('Browser smoke passed: actual Mermaid render, recovery, Previous/Reset, Pause/Resume, invalid-player isolation.');
+
+    // Dark theme: state colours switch to their bright variants.
+    const darkPage = await browser.newPage({ colorScheme: 'dark' });
+    await darkPage.goto(url);
+    await darkPage.waitForFunction(() => document.querySelectorAll('.flow-player svg').length === 2);
+    await darkPage.waitForFunction(() => [...document.querySelectorAll('[data-action="next"]')].every(b => !b.disabled));
+    const dark = darkPage.locator('[data-flow-id="target-offline"]');
+    for (let i = 0; i < 5; i++) await dark.locator('[data-action="next"]').click();
+    const darkTarget = dark.locator('g.node').filter({ hasText: 'Target PostgreSQL' });
+    assert.match(await darkTarget.getAttribute('class'), /flow-state-error/);
+    const darkStroke = await darkTarget.locator(':scope > *').first().evaluate(e => getComputedStyle(e).stroke);
+    assert.equal(darkStroke, 'rgb(248, 113, 113)');
+    await darkPage.close();
+
+    console.log('Browser smoke passed: actual Mermaid render, recovery, Previous/Reset, Pause/Resume, dark theme, invalid-player isolation.');
   } finally {
     if (browser) await browser.close();
     await new Promise(resolve => server.close(resolve));
