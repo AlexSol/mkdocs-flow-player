@@ -30,7 +30,7 @@ const http = require('node:http');
     }
     const url = `http://127.0.0.1:${server.address().port}/`;
     await page.goto(url);
-    await page.waitForFunction(() => document.querySelectorAll('.flow-player svg').length === 3);
+    await page.waitForFunction(() => document.querySelectorAll('.flow-player svg').length === 4);
     await page.waitForFunction(() => [...document.querySelectorAll('[data-action="next"]')].every(b => !b.disabled));
     const cdc = page.locator('[data-flow-id="normal-replication"]');
     assert.equal(await cdc.locator('.flow-player__scenario-select option').count(), 2);
@@ -81,6 +81,39 @@ const http = require('node:http');
     await normal.locator('[data-action="reset"]').click();
     assert.equal(await normal.locator('.flow-traveller').count(), 0);
 
+    // Sequence diagram: actor boxes highlight per step (both mirrored ends),
+    // message steps animate a traveller, and Reset clears every highlight.
+    const seq = page.locator('[data-flow-id="sequence-conversation"]');
+    const seqStates = () => seq.evaluate(el => [...el.querySelectorAll('svg [class*="flow-state-"]')]
+      .map(n => `${n.textContent.trim()}=${n.getAttribute('class')}`).sort());
+    for (let i = 0; i < 7; i++) await seq.locator('[data-action="next"]').click();
+    assert.deepEqual(await seqStates(), [
+      'Alice=flow-state-success', 'Alice=flow-state-success',
+      'John=flow-state-active', 'John=flow-state-active',
+    ]);
+    await seq.locator('[data-action="previous"]').click();
+    assert.deepEqual(await seqStates(), [
+      'Alice=flow-state-active', 'Alice=flow-state-active',
+      'John=flow-state-active', 'John=flow-state-active',
+    ]);
+    await seq.locator('[data-action="reset"]').click();
+    assert.deepEqual(await seqStates(), []);
+    await seq.locator('[data-action="next"]').click(); // Alice actor
+    await seq.locator('[data-action="next"]').click(); // Alice -> John message
+    // The traveller must be a rendered SVG node (non-zero box) and must move; a
+    // flat sequence layout once left the overlay orphaned in the HTML wrapper.
+    const seqCx = await page.waitForFunction(() => {
+      const m = document.querySelector('[data-flow-id="sequence-conversation"] .flow-traveller');
+      const box = m && m.getBoundingClientRect();
+      return box && box.width > 0 && box.height > 0 ? m.getAttribute('cx') : false;
+    }).then(handle => handle.jsonValue());
+    await page.waitForFunction(from => {
+      const m = document.querySelector('[data-flow-id="sequence-conversation"] .flow-traveller');
+      return !m || m.getAttribute('cx') !== from;
+    }, seqCx);
+    await seq.locator('[data-action="reset"]').click();
+    assert.equal(await seq.locator('.flow-traveller').count(), 0);
+
     // Insert malformed legacy containers before a valid player and reload scripts.
     await page.route(url, async route => {
       const html = await fs.readFile(path.join(site, 'index.html'), 'utf8');
@@ -89,7 +122,7 @@ const http = require('node:http');
       await route.fulfill({ body: html.replace('<div class="flow-player"', invalid + '<div class="flow-player"'), contentType: 'text/html' });
     });
     await page.goto(url);
-    await page.waitForFunction(() => document.querySelectorAll('.flow-player svg').length === 3);
+    await page.waitForFunction(() => document.querySelectorAll('.flow-player svg').length === 4);
     await page.waitForFunction(() => [...document.querySelectorAll('[data-flow-id] [data-action="next"]')].every(b => !b.disabled));
     assert.deepEqual(errors, []);
 
@@ -102,7 +135,7 @@ const http = require('node:http');
       slate.dispatchEvent(new Event('change', { bubbles: true }));
     });
     await darkPage.waitForFunction(() => document.body.dataset.mdColorScheme === 'slate');
-    await darkPage.waitForFunction(() => document.querySelectorAll('.flow-player svg').length === 3);
+    await darkPage.waitForFunction(() => document.querySelectorAll('.flow-player svg').length === 4);
     await darkPage.waitForFunction(() => [...document.querySelectorAll('[data-action="next"]')].every(b => !b.disabled));
     const darkCdc = darkPage.locator('[data-flow-id="normal-replication"]');
     await darkCdc.locator('.flow-player__scenario-select').selectOption('1');

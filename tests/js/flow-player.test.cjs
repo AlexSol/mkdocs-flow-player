@@ -27,7 +27,10 @@ function fixture(steps = [{ node: 'A', state: 'error' }, { node: 'A', state: 'su
   // (last child) so it paints above edge labels and nodes.
   const diagramRoot = { children: [], appendChild(c) { this.children.push(c); }, querySelector: () => null };
   const path = { id: 'flow-player-1-L_A_B_0', parentNode: { appendChild() {}, parentNode: diagramRoot }, getTotalLength: () => 100, getPointAtLength: x => ({ x, y: 0 }) };
-  const svg = { querySelectorAll: selector => selector === 'g.node' ? nodes : [path] };
+  const svg = {
+    querySelectorAll: selector =>
+      selector === 'g.node' ? nodes : selector.startsWith('.flow-state') ? [] : [path],
+  };
   const fields = new Map();
   for (const name of ['scenario', 'mermaid', 'metadata', 'canvas', 'counter', 'step-title', 'node-summary', 'description', 'payload', 'zoom-value']) fields.set(`.flow-player__${name}`, element());
   const docLink = element();
@@ -201,6 +204,43 @@ test('latest node state wins; Previous and Reset replay deterministically', () =
   assert.equal(player.currentStep, -1);
 });
 
+test('sequence actors: every mirrored box highlights and clears on replay', () => {
+  const { player } = fixture([
+    { node: 'Alice', state: 'active' }, { node: 'John' }, { node: 'Alice', state: 'success' },
+  ]);
+  const box = (name) => {
+    const g = element();
+    const text = Object.assign(element(), { textContent: name, closest: () => g });
+    return { g, text };
+  };
+  const aliceTop = box('Alice'), aliceBottom = box('Alice'), johnTop = box('John');
+  const boxes = [aliceTop.g, aliceBottom.g, johnTop.g];
+  player.svg = {
+    querySelectorAll: (selector) => {
+      if (selector === 'g.node') return [];
+      if (selector.startsWith('.flow-state')) {
+        return boxes.filter((g) => [...g.classes].some((c) => c.startsWith('flow-state-')));
+      }
+      return [aliceTop.text, johnTop.text, aliceBottom.text];
+    },
+  };
+
+  player.reset();
+  player.next(); // Alice active - both mirrored boxes
+  assert.deepEqual([...aliceTop.g.classes], ['flow-state-active']);
+  assert.deepEqual([...aliceBottom.g.classes], ['flow-state-active']);
+  player.next(); // John active
+  player.next(); // Alice success replaces active on both boxes
+  assert.deepEqual([...aliceTop.g.classes], ['flow-state-success']);
+  assert.deepEqual([...aliceBottom.g.classes], ['flow-state-success']);
+  assert.deepEqual([...johnTop.g.classes], ['flow-state-active']);
+  player.previous(); // back to the John step; Alice reverts to step 1's active
+  assert.deepEqual([...aliceTop.g.classes], ['flow-state-active']);
+  assert.deepEqual([...johnTop.g.classes], ['flow-state-active']);
+  player.reset();
+  assert.equal(boxes.reduce((sum, g) => sum + g.classes.size, 0), 0);
+});
+
 test('keyboard: arrows step, Home resets, End jumps to the last step', () => {
   const { player } = fixture([{ node: 'A' }, { node: 'A', state: 'success' }, { node: 'B' }]);
   const press = (key, extra = {}) => player.handleKey({ key, preventDefault() {}, ...extra });
@@ -236,6 +276,23 @@ test('the traveller renders in an overlay layer so labels never occlude it', () 
   const layer = diagramRoot.children.at(-1); // appended last => painted above labels/nodes
   assert.equal(layer.class, 'flow-player__marker-layer');
   assert.equal(player.marker.parentNode, layer);
+});
+
+test('the traveller overlay clamps to the SVG when the edge sits directly under it', () => {
+  const { player } = fixture([{ edge: { from: 'A', to: 'B' } }]);
+  const svgEl = {
+    namespaceURI: 'http://www.w3.org/2000/svg', kids: [], querySelector: () => null,
+    appendChild(child) { this.kids.push(child); child.parentNode = this; return child; },
+  };
+  // Mermaid sequence: the message line is a direct child of <svg>, whose parent
+  // is the HTML diagram div - appending an SVG group there would never render.
+  const htmlWrapper = { namespaceURI: 'http://www.w3.org/1999/xhtml', appendChild() { throw new Error('overlay escaped into HTML'); } };
+  svgEl.parentNode = htmlWrapper;
+  player.path = { ownerSVGElement: svgEl, parentNode: svgEl, getAttribute: () => '0' };
+
+  const layer = player.markerLayer();
+  assert.equal(layer.parentNode, svgEl);
+  assert.equal(svgEl.kids.at(-1), layer);
 });
 
 test('Pause freezes marker and Resume uses same step and remaining time', () => {

@@ -9,11 +9,12 @@ def test_example_builds(tmp_path: Path):
     config = load_config(config_file=str(root / "example/mkdocs.yml"), site_dir=str(tmp_path / "site"))
     build(config)
     output = (tmp_path / "site/index.html").read_text(encoding="utf-8")
-    assert output.count('class="flow-player"') == 3
+    assert output.count('class="flow-player"') == 4
     assert 'data-flow-id="cdc-use-case"' in output
     assert '"id": "target-offline"' in output
     assert 'data-flow-id="outbox-dual-write-failure"' in output
     assert '"id": "outbox-atomic-publish"' in output
     assert '"id": "outbox-broker-retry"' in output
+    assert 'data-flow-id="sequence-conversation"' in output
     assert (tmp_path / "site/assets/javascripts/flow-player.js").exists()
     assert (tmp_path / "site/assets/stylesheets/flow-player.css").exists()

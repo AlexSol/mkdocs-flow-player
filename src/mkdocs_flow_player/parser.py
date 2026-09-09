@@ -11,6 +11,9 @@ import yaml
 ALLOWED_STATES = {"active", "success", "warning", "error", "waiting"}
 IDENTIFIER_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*(?:-[A-Za-z0-9_]+)*")
 LINK_RE = re.compile(r"(?:-->|-\.->|==>|--o|--x|---)")
+SEQUENCE_MESSAGE_RE = re.compile(
+    rf"^({IDENTIFIER_RE.pattern})\s*[-.=x)]*>>[+-]?\s*({IDENTIFIER_RE.pattern})\s*:\s*(.*?)\s*$"
+)
 
 
 class FlowError(ValueError):
@@ -211,7 +214,11 @@ def _edge_label(text: str, offset: int) -> tuple[Optional[str], int]:
 def parse_topology(source: str) -> Topology:
     """Validate a documented flowchart subset, not the full Mermaid grammar."""
     statements = _statements(source)
-    if not statements or not re.fullmatch(r"(?:flowchart|graph)\s+(?:LR|RL|TB|TD|BT)", statements[0]):
+    if not statements:
+        raise FlowError("Expected flowchart/graph LR, RL, TB, TD or BT on its own line")
+    if statements[0] == "sequenceDiagram":
+        return _parse_sequence_topology(source, statements)
+    if not re.fullmatch(r"(?:flowchart|graph)\s+(?:LR|RL|TB|TD|BT)", statements[0]):
         raise FlowError("Expected flowchart/graph LR, RL, TB, TD or BT on its own line")
     nodes, edges, counts = set(), [], {}
     for statement in statements[1:]:
@@ -233,4 +240,20 @@ def parse_topology(source: str) -> Topology:
             left = right
     if not nodes:
         raise FlowError("No Mermaid nodes found")
+    return Topology(source, frozenset(nodes), tuple(edges))
+
+
+def _parse_sequence_topology(source: str, statements: list[str]) -> Topology:
+    nodes, edges, counts = set(), [], {}
+    for statement in statements[1:]:
+        match = SEQUENCE_MESSAGE_RE.match(statement)
+        if not match:
+            continue
+        left, right, label = match.groups()
+        nodes.update((left, right))
+        pair = (left, right)
+        counts[pair] = counts.get(pair, 0) + 1
+        edges.append(Edge(left, right, counts[pair], label.strip() or None))
+    if not nodes:
+        raise FlowError("No Mermaid sequence messages found")
     return Topology(source, frozenset(nodes), tuple(edges))

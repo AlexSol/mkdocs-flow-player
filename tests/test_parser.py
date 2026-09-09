@@ -37,3 +37,22 @@ def test_load_topology(tmp_path: Path):
     topology = load_topology(diagram)
     assert topology.nodes == {"A", "B"}
     assert topology.edges == (Edge("A", "B", 1, "event"),)
+
+
+def test_load_sequence_topology(tmp_path: Path):
+    diagram = tmp_path / "sequence.mmd"
+    diagram.write_text(
+        "sequenceDiagram\n"
+        "    Alice->>+John: Hello John, how are you?\n"
+        "    Alice->>+John: John, can you hear me?\n"
+        "    John-->>-Alice: Hi Alice, I can hear you!\n"
+        "    John-->>-Alice: I feel great!\n"
+    )
+    topology = load_topology(diagram)
+    assert topology.nodes == {"Alice", "John"}
+    assert topology.edges == (
+        Edge("Alice", "John", 1, "Hello John, how are you?"),
+        Edge("Alice", "John", 2, "John, can you hear me?"),
+        Edge("John", "Alice", 1, "Hi Alice, I can hear you!"),
+        Edge("John", "Alice", 2, "I feel great!"),
+    )

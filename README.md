@@ -330,6 +330,25 @@ Parallel edges between the same ordered pair are supported when scenario steps
 disambiguate them with `edge.nth` or `edge.label`. Unsupported syntax fails with
 a readable error.
 
+### Supported Mermaid syntax: sequence diagrams
+
+A diagram whose first statement is `sequenceDiagram` is also accepted. Each
+solid- or dotted-arrow message line (`A->>B: text`, `A-->>B: text`, with the
+optional `+`/`-` activation shorthand) becomes an edge; the participant names
+become nodes and are the public API for scenario steps, exactly as with
+flowcharts. Other arrow tips (`->`, `-x`, `-)`) are not recognised as messages. A
+`node` step highlights every box Mermaid draws for that participant (it mirrors
+each actor at both ends of the lifeline); an `edge` step animates a traveller
+along the message line, matched to the *nth* `from -> to` message in source
+order. Repeated messages between the same pair are disambiguated with `edge.nth`
+or `edge.label`, like parallel flowchart edges.
+
+Only message lines are parsed. `participant`/`actor` aliases, `note`, `loop`,
+`alt`, `par`, `autonumber` and other block syntax are ignored by the validator;
+a participant that never sends or receives a message is not a known node, and
+control-flow blocks that wrap messages can shift message order, so keep scenario
+sequence diagrams to plain message lists.
+
 The Markdown directive is top-level; examples inside backtick/tilde fences or
 indented code blocks remain literal. Source and scenario data are embedded as
 HTML-safe JSON, warning messages are escaped, and Mermaid uses strict security.

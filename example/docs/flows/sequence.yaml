@@ -1,0 +1,34 @@
+id: sequence-conversation
+title: Alice and John
+settings:
+  step_duration: 1200
+steps:
+  - node: Alice
+    title: Alice starts the conversation
+    state: active
+  - edge:
+      from: Alice
+      to: John
+      label: Hello John, how are you?
+    title: First message is sent
+  - edge:
+      from: Alice
+      to: John
+      label: John, can you hear me?
+    title: Alice follows up
+  - node: John
+    title: John receives both messages
+    state: active
+  - edge:
+      from: John
+      to: Alice
+      label: Hi Alice, I can hear you!
+    title: John replies
+  - edge:
+      from: John
+      to: Alice
+      label: I feel great!
+    title: John sends the final reply
+  - node: Alice
+    title: Alice has the response
+    state: success

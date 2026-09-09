@@ -31,3 +31,11 @@ scenarios:
   - flows/outbox-atomic-publish.yaml
   - flows/outbox-broker-retry.yaml
 :::
+
+## Sequence diagram
+
+::: interactive-flow
+title: Sequence diagram
+diagram: flows/sequence.mmd
+scenario: flows/sequence.yaml
+:::

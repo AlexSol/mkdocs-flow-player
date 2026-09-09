@@ -11,6 +11,24 @@
     return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   }
 
+  function parseSequenceEdges(source) {
+    const lines = String(source).split(/\r?\n|;/).map((line) => line.trim()).filter(Boolean);
+    if (lines[0] !== "sequenceDiagram") return [];
+    const id = "[A-Za-z_][A-Za-z0-9_]*(?:-[A-Za-z0-9_]+)*";
+    const message = new RegExp(`^(${id})\\s*[-.=x)]*>>[+-]?\\s*(${id})\\s*:`);
+    const counts = new Map();
+    const edges = [];
+    for (const line of lines.slice(1)) {
+      const match = message.exec(line);
+      if (!match) continue;
+      const key = `${match[1]}\\u0000${match[2]}`;
+      const nth = (counts.get(key) ?? 0) + 1;
+      counts.set(key, nth);
+      edges.push({ from: match[1], to: match[2], nth });
+    }
+    return edges;
+  }
+
   class FlowPlayer {
     constructor(element, clock = {
       now: () => performance.now(),
@@ -24,6 +42,7 @@
       this.scenario = this.scenarios[0];
       this.metadata = JSON.parse(element.querySelector(".flow-player__metadata")?.textContent ?? '{"nodes":{}}');
       this.source = JSON.parse(element.querySelector(".flow-player__mermaid").textContent);
+      this.sequenceEdges = parseSequenceEdges(this.source);
       this.currentStep = -1;
       this.playing = false;
       this.elapsed = 0;
@@ -222,46 +241,71 @@
     }
 
     clearVisualState() {
-      for (const node of this.svg.querySelectorAll("g.node")) {
-        node.classList.remove(...STATES.map((state) => `flow-state-${state}`));
-      }
+      const stateClasses = STATES.map((state) => `flow-state-${state}`);
+      // Flowchart state lands on `g.node`; sequence state lands on an actor's
+      // wrapper `<g>`, which is not a `g.node`. Clear both, matched by class so a
+      // Reset or a backwards step never leaves a stale highlight behind.
+      const stale = new Set([
+        ...this.svg.querySelectorAll("g.node"),
+        ...this.svg.querySelectorAll(stateClasses.map((name) => `.${name}`).join(",")),
+      ]);
+      for (const node of stale) node.classList.remove(...stateClasses);
       if (this.marker) this.marker.remove();
       this.marker = null;
     }
 
     applyStep(step, animate) {
       if (step.node) {
-        const node = this.findNode(step.node);
-        node.classList.remove(...STATES.map((state) => `flow-state-${state}`));
-        node.classList.add(`flow-state-${step.state ?? "active"}`);
+        const stateClasses = STATES.map((state) => `flow-state-${state}`);
+        // Mermaid mirrors a sequence actor at both ends of its lifeline; highlight
+        // every box that carries the id, not just the first one found.
+        for (const node of this.findNodes(step.node)) {
+          node.classList.remove(...stateClasses);
+          node.classList.add(`flow-state-${step.state ?? "active"}`);
+        }
       } else if (step.edge && animate) {
         this.animateEdge(step.edge.from, step.edge.to, step.edge.nth);
       }
     }
 
     findNode(id) {
-      const nodePattern = new RegExp(`(?:^|[-_:])flowchart-${escapeRegExp(id)}-\\d+$`);
-      return Array.from(this.svg.querySelectorAll("g.node")).find((node) => {
-        if (node.dataset?.id === id) return true;
-        if (node.id === id) return true;
-        return nodePattern.test(node.id);
-      });
+      return this.findNodes(id)[0];
+    }
+
+    findNodes(id) {
+      const pattern = new RegExp(`(?:^|[-_:])flowchart-${escapeRegExp(id)}-\\d+$`);
+      const matches = (node) => node.dataset?.id === id || node.id === id
+        || node.textContent?.trim() === id || pattern.test(node.id);
+      const groups = [];
+      for (const node of this.svg.querySelectorAll("g.node, g[id^='root-'], text.actor, .actor")) {
+        if (!matches(node)) continue;
+        const group = node.closest?.("g") ?? node;
+        if (group && !groups.includes(group)) groups.push(group);
+      }
+      if (groups.length) return groups;
+      const fallback = Array.from(this.svg.querySelectorAll("g.node")).find(matches);
+      return fallback ? [fallback] : [];
     }
 
     findEdge(from, to, nth = 1) {
       const edgeId = `L_${from}_${to}`;
       const edgeIndex = Number.isInteger(nth) && nth > 0 ? nth - 1 : 0;
       const edgePattern = new RegExp(`(?:^|[-_:])${escapeRegExp(edgeId)}_${edgeIndex}$`);
-      return Array.from(this.svg.querySelectorAll("path")).find((path) => {
+      const idMatch = Array.from(this.svg.querySelectorAll("path, line")).find((path) => {
         if (path.dataset?.id === edgeId && Number(path.dataset?.edgeIndex ?? edgeIndex) === edgeIndex) return true;
         return edgePattern.test(path.id);
       });
+      if (idMatch) return idMatch;
+      const sequenceIndex = this.sequenceEdges.findIndex((edge) => edge.from === from && edge.to === to && edge.nth === nth);
+      if (sequenceIndex < 0) return undefined;
+      return Array.from(this.svg.querySelectorAll("line[class^='messageLine'], path[class^='messageLine']"))[sequenceIndex];
     }
 
     animateEdge(from, to, nth) {
       if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
       this.path = this.findEdge(from, to, nth);
-      this.pathLength = this.path.getTotalLength();
+      this.pathGeometry = this.edgeGeometry(this.path);
+      this.pathLength = this.pathGeometry.length;
       this.marker = document.createElementNS("http://www.w3.org/2000/svg", "circle");
       this.marker.setAttribute("r", "6");
       this.marker.setAttribute("class", "flow-traveller");
@@ -269,11 +313,35 @@
       this.positionMarker();
     }
 
+    edgeGeometry(edge) {
+      if (edge.getTotalLength && edge.getPointAtLength) {
+        return { length: edge.getTotalLength(), pointAt: (distance) => edge.getPointAtLength(distance) };
+      }
+      const x1 = Number(edge.getAttribute("x1"));
+      const y1 = Number(edge.getAttribute("y1"));
+      const x2 = Number(edge.getAttribute("x2"));
+      const y2 = Number(edge.getAttribute("y2"));
+      const length = Math.hypot(x2 - x1, y2 - y1);
+      return {
+        length,
+        pointAt: (distance) => {
+          const progress = length ? distance / length : 1;
+          return { x: x1 + (x2 - x1) * progress, y: y1 + (y2 - y1) * progress };
+        },
+      };
+    }
+
     markerLayer() {
       // The traveller must paint above edge labels and nodes. Mermaid puts no
       // transform on `g.edgePaths` or its parent, so path coordinates stay valid
-      // in an overlay group appended last to that shared parent.
-      const container = this.path.parentNode.parentNode ?? this.path.parentNode;
+      // in an overlay group appended last to that shared parent. Sequence message
+      // lines, though, sit directly under `<svg>`, so the grandparent is the HTML
+      // wrapper - an SVG group appended there never renders. Clamp to the SVG.
+      const SVG_NS = "http://www.w3.org/2000/svg";
+      let container = this.path.parentNode?.parentNode ?? this.path.parentNode;
+      if (container?.namespaceURI && container.namespaceURI !== SVG_NS) {
+        container = this.path.ownerSVGElement ?? this.path.parentNode;
+      }
       let layer = container.querySelector?.(":scope > .flow-player__marker-layer");
       if (!layer) {
         layer = document.createElementNS("http://www.w3.org/2000/svg", "g");
@@ -286,7 +354,7 @@
     positionMarker() {
       if (!this.marker) return;
       const progress = Math.min(this.elapsed / Math.min(this.duration, 1200), 1);
-      const point = this.path.getPointAtLength(this.pathLength * progress);
+      const point = this.pathGeometry.pointAt(this.pathLength * progress);
       this.marker.setAttribute("cx", point.x);
       this.marker.setAttribute("cy", point.y);
       if (progress >= 1) {
