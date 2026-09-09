@@ -1,35 +1,143 @@
+/* Theme tokens. On Material for MkDocs these follow its palette (and its scheme
+   toggle); elsewhere they fall back to CSS system colors, which track the OS. */
 .flow-player {
-  --flow-accent: #4f46e5;
-  --flow-border: color-mix(in srgb, currentColor 18%, transparent);
+  --flow-fg: var(--md-typeset-color, CanvasText);
+  --flow-bg: var(--md-default-bg-color, Canvas);
+  --flow-muted: color-mix(in srgb, var(--flow-fg) 62%, transparent);
+  --flow-surface: color-mix(in srgb, var(--flow-fg) 5%, var(--flow-bg));
+  --flow-border: color-mix(in srgb, var(--flow-fg) 20%, transparent);
+  --flow-accent: var(--md-accent-fg-color, #4f46e5);
+  --flow-canvas-bg: var(--flow-bg);
+
+  --flow-active: #2563eb;
+  --flow-success: #16a34a;
+  --flow-warning: #d97706;
+  --flow-error: #dc2626;
+  --flow-waiting: #7c3aed;
+  --flow-invalid: #dc2626;
+
+  color-scheme: light dark;
+  color: var(--flow-fg);
+  background: var(--flow-bg);
   border: 1px solid var(--flow-border);
   border-radius: 0.75rem;
   margin: 1.25rem 0;
   overflow: hidden;
 }
 
+/* Dark palette: brighter state colours. Applied for an OS-dark page that is not
+   under a theme managing its own scheme (e.g. Material), and for Material slate. */
+@media (prefers-color-scheme: dark) {
+  .flow-player:not([data-md-color-scheme] *) {
+    --flow-accent: var(--md-accent-fg-color, #a5b4fc);
+    --flow-active: #60a5fa;
+    --flow-success: #4ade80;
+    --flow-warning: #fbbf24;
+    --flow-error: #f87171;
+    --flow-waiting: #c4b5fd;
+    --flow-invalid: #f87171;
+  }
+}
+[data-md-color-scheme="slate"] .flow-player {
+  --flow-accent: var(--md-accent-fg-color, #a5b4fc);
+  --flow-active: #60a5fa;
+  --flow-success: #4ade80;
+  --flow-warning: #fbbf24;
+  --flow-error: #f87171;
+  --flow-waiting: #c4b5fd;
+  --flow-invalid: #f87171;
+}
+
+/* Re-tint Mermaid's baked light-theme SVG so the diagram follows a dark page.
+   State-highlighted nodes are left to the .flow-state-* rules below. */
+@media (prefers-color-scheme: dark) {
+  .flow-player:not([data-md-color-scheme] *) .flow-player__canvas :is(.nodeLabel, .edgeLabel, .label, text) { fill: var(--flow-fg) !important; color: var(--flow-fg) !important; }
+  .flow-player:not([data-md-color-scheme] *) .flow-player__canvas .node:not([class*="flow-state-"]) > :is(rect, path, polygon, circle, ellipse) { fill: var(--flow-surface) !important; stroke: var(--flow-border) !important; }
+  .flow-player:not([data-md-color-scheme] *) .flow-player__canvas :is(.flowchart-link, .edgePaths path) { stroke: var(--flow-muted); }
+  .flow-player:not([data-md-color-scheme] *) .flow-player__canvas .marker path { fill: var(--flow-muted); }
+}
+[data-md-color-scheme="slate"] .flow-player .flow-player__canvas :is(.nodeLabel, .edgeLabel, .label, text) { fill: var(--flow-fg) !important; color: var(--flow-fg) !important; }
+[data-md-color-scheme="slate"] .flow-player .flow-player__canvas .node:not([class*="flow-state-"]) > :is(rect, path, polygon, circle, ellipse) { fill: var(--flow-surface) !important; stroke: var(--flow-border) !important; }
+[data-md-color-scheme="slate"] .flow-player .flow-player__canvas :is(.flowchart-link, .edgePaths path) { stroke: var(--flow-muted); }
+[data-md-color-scheme="slate"] .flow-player .flow-player__canvas .marker path { fill: var(--flow-muted); }
+
 .flow-player__header,
 .flow-player__details,
 .flow-player__controls { padding: 0.75rem 1rem; }
 .flow-player__header { border-bottom: 1px solid var(--flow-border); }
-.flow-player__canvas { min-height: 220px; padding: 1rem; overflow-x: auto; text-align: center; }
+.flow-player__canvas {
+  min-height: 220px;
+  padding: 1rem;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  text-align: center;
+}
 .flow-player__canvas svg { max-width: 100%; height: auto; }
+.flow-player__canvas:focus-visible {
+  outline: 2px solid var(--flow-accent);
+  outline-offset: 2px;
+}
 /* Controls sit above the details so a long description or payload never shifts them. */
-.flow-player__controls { border-top: 1px solid var(--flow-border); }
+.flow-player__controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  border-top: 1px solid var(--flow-border);
+}
+.flow-player__controls button {
+  cursor: pointer;
+  padding: 0.4rem 0.85rem;
+  color: inherit;
+  background: var(--flow-surface);
+  border: 1px solid var(--flow-border);
+  border-radius: 0.375rem;
+}
+.flow-player__controls button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--flow-fg) 10%, var(--flow-bg));
+}
+.flow-player__controls button:focus-visible {
+  outline: 2px solid var(--flow-accent);
+  outline-offset: 2px;
+}
+.flow-player__controls button:disabled { cursor: default; opacity: 0.45; }
+.flow-player__controls button[aria-pressed="true"] {
+  border-color: var(--flow-accent);
+  background: color-mix(in srgb, var(--flow-accent) 18%, var(--flow-bg));
+}
+
 .flow-player__details { border-top: 1px solid var(--flow-border); min-height: 7rem; }
-.flow-player__counter { color: #6b7280; font-size: 0.8rem; }
+.flow-player__counter { color: var(--flow-muted); font-size: 0.8rem; }
 .flow-player__step-title { margin: 0.3rem 0; }
 .flow-player__description { margin: 0.25rem 0; }
-.flow-player__payload { margin: 0.75rem 0 0; padding: 0.75rem; overflow: auto; }
-.flow-player__controls { display: flex; flex-wrap: wrap; gap: 0.5rem; }
-.flow-player__controls button { cursor: pointer; padding: 0.4rem 0.8rem; }
-.flow-player__controls button:disabled { cursor: default; opacity: 0.45; }
-.flow-player--invalid { border-color: #dc2626; padding: 1rem; color: #b91c1c; }
+.flow-player__payload {
+  margin: 0.75rem 0 0;
+  padding: 0.75rem;
+  max-height: 18rem;
+  overflow: auto;
+  color: var(--flow-fg);
+  background: var(--flow-surface);
+  border: 1px solid var(--flow-border);
+  border-radius: 0.375rem;
+}
+.flow-player--invalid {
+  border-color: var(--flow-invalid);
+  padding: 1rem;
+  color: var(--flow-invalid);
+}
 
-.flow-state-active > * { stroke: #2563eb !important; stroke-width: 3px !important; }
-.flow-state-success > * { stroke: #16a34a !important; stroke-width: 3px !important; }
-.flow-state-warning > * { stroke: #d97706 !important; stroke-width: 3px !important; }
-.flow-state-error > * { stroke: #dc2626 !important; stroke-width: 3px !important; }
-.flow-state-waiting > * { stroke: #7c3aed !important; stroke-width: 3px !important; stroke-dasharray: 5 3; }
+@media (max-width: 30rem) {
+  .flow-player__header,
+  .flow-player__details,
+  .flow-player__controls { padding: 0.625rem 0.75rem; }
+  .flow-player__canvas { padding: 0.75rem 0.5rem; min-height: 160px; }
+  .flow-player__controls button { flex: 1 1 auto; min-width: 4.5rem; min-height: 2.75rem; }
+}
+
+.flow-player__canvas .flow-state-active  > :is(rect, path, polygon, circle, ellipse) { stroke: var(--flow-active)  !important; stroke-width: 3px !important; fill: color-mix(in srgb, var(--flow-active)  14%, var(--flow-bg)) !important; }
+.flow-player__canvas .flow-state-success > :is(rect, path, polygon, circle, ellipse) { stroke: var(--flow-success) !important; stroke-width: 3px !important; fill: color-mix(in srgb, var(--flow-success) 14%, var(--flow-bg)) !important; }
+.flow-player__canvas .flow-state-warning > :is(rect, path, polygon, circle, ellipse) { stroke: var(--flow-warning) !important; stroke-width: 3px !important; fill: color-mix(in srgb, var(--flow-warning) 14%, var(--flow-bg)) !important; }
+.flow-player__canvas .flow-state-error   > :is(rect, path, polygon, circle, ellipse) { stroke: var(--flow-error)   !important; stroke-width: 3px !important; fill: color-mix(in srgb, var(--flow-error)   14%, var(--flow-bg)) !important; }
+.flow-player__canvas .flow-state-waiting > :is(rect, path, polygon, circle, ellipse) { stroke: var(--flow-waiting) !important; stroke-width: 3px !important; stroke-dasharray: 5 3; fill: color-mix(in srgb, var(--flow-waiting) 14%, var(--flow-bg)) !important; }
 .flow-traveller { fill: var(--flow-accent); filter: drop-shadow(0 0 3px var(--flow-accent)); }
 
 /* Collapse Mermaid's stacked translucent grey edge-label pills into one solid
@@ -38,9 +146,8 @@
 .flow-player__canvas .edgeLabel,
 .flow-player__canvas span.edgeLabel,
 .flow-player__canvas .edgeLabel .labelBkg { background: transparent !important; }
-.flow-player__canvas .edgeLabel p { background: var(--flow-canvas-bg, #fff) !important; }
+.flow-player__canvas .edgeLabel p { background: var(--flow-canvas-bg) !important; }
 
 @media (prefers-reduced-motion: reduce) {
   .flow-traveller { display: none; }
 }
-
