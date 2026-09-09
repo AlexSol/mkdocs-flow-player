@@ -211,6 +211,25 @@ def test_distinct_flow_ids_coexist(tmp_path):
         assert 'class="flow-player"' in plugin.on_page_markdown(directive, page, cfg, None)
 
 
+def test_mermaid_url_default_injects_cdn():
+    plugin = FlowPlayerPlugin()
+    plugin.load_config({})
+    config = SimpleNamespace(extra_javascript=[], extra_css=[])
+    plugin.on_config(config)
+    assert any("mermaid" in item and item.startswith("http") for item in config.extra_javascript)
+    assert "assets/javascripts/flow-player.js" in config.extra_javascript
+
+
+def test_empty_mermaid_url_skips_injection_for_vendored_builds():
+    plugin = FlowPlayerPlugin()
+    plugin.load_config({"mermaid_url": ""})
+    config = SimpleNamespace(extra_javascript=[], extra_css=[])
+    plugin.on_config(config)
+    assert not any("mermaid" in item for item in config.extra_javascript)
+    assert "assets/javascripts/flow-player.js" in config.extra_javascript
+    assert "assets/stylesheets/flow-player.css" in config.extra_css
+
+
 def test_warning_message_escaped(tmp_path):
     plugin = FlowPlayerPlugin()
     plugin.load_config({"validation": "warning"})

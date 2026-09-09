@@ -44,6 +44,25 @@ the scenario. A broken node or edge reference fails `mkdocs build` in strict mod
 Each scenario `id` must be unique across the whole site; a repeat is reported like
 any other validation error (build failure in `strict`, placeholder in `warning`).
 
+### Config options
+
+| Option | Default | Purpose |
+| --- | --- | --- |
+| `validation` | `strict` | `strict` fails the build on any flow error; `warning` logs it and renders a placeholder. |
+| `mermaid_url` | pinned jsDelivr CDN (Mermaid 11.17.2) | URL or docs-relative path of the Mermaid script. Set to `""` to inject nothing. |
+
+**Offline / vendored Mermaid** — download `mermaid.min.js` into `docs/` and point
+the option at it:
+
+```yaml
+plugins:
+  - flow-player:
+      mermaid_url: assets/mermaid.min.js   # docs/assets/mermaid.min.js
+```
+
+Or set `mermaid_url: ""` and load Mermaid yourself through `extra_javascript` /
+theme overrides. The plugin's own `flow-player.js` and `.css` are always injected.
+
 ## Worked example
 
 These two files live under [`example/docs/flows/`](example/docs/flows/) and produce
@@ -291,8 +310,8 @@ The browser test expects the built example and downloads Mermaid through the sam
 CDN URL as the example. For an offline run, set `MERMAID_TEST_SCRIPT` to a local
 copy of that upstream script. `CHROMIUM_EXECUTABLE` optionally selects an installed
 Chromium binary. The npm dependencies are development-only, not plugin runtime
-dependencies. The CDN is pinned to Mermaid 11.17.2; override
-`mermaid_url` in the plugin config to use another compatible build.
+dependencies. The CDN is pinned to Mermaid 11.17.2; override `mermaid_url` in the
+plugin config to use another compatible build or a [vendored copy](#config-options).
 
 ## Design constraints
 

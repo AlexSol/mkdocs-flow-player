@@ -33,7 +33,11 @@ class FlowPlayerPlugin(BasePlugin):
     def on_config(self, config):
         # Reset per build; the plugin instance is reused across `mkdocs serve` rebuilds.
         self._flow_sources = {}
-        config.extra_javascript.append(self.config["mermaid_url"])
+        # An empty mermaid_url skips injection so docs can vendor their own copy
+        # (drop it in docs/ and add it via extra_javascript, or point mermaid_url
+        # at a docs-relative path for an offline build).
+        if self.config["mermaid_url"]:
+            config.extra_javascript.append(self.config["mermaid_url"])
         config.extra_javascript.append("assets/javascripts/flow-player.js")
         config.extra_css.append("assets/stylesheets/flow-player.css")
         return config

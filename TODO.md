@@ -43,7 +43,7 @@
 - [ ] Add node metadata/details and documentation links
 - [x] Add keyboard navigation and richer accessibility semantics
 - [ ] Improve responsive layout and theme integration (Material/light/dark)
-- [ ] Add a configurable, vendored Mermaid option for offline documentation
+- [x] Add a configurable, vendored Mermaid option for offline documentation
 - [x] Add JSON Schema and editor autocomplete for the YAML DSL
 - [x] Add duplicate flow/scenario ID validation across the site
 - [ ] Publish package releases to PyPI with changelog and compatibility matrix
