@@ -151,14 +151,18 @@
     }
 
     findNode(id) {
+      // Mermaid >= 11 prefixes element ids with the render id (e.g. "flow-player-1-flowchart-DB-0"),
+      // so match the "flowchart-<id>-<n>" segment rather than the whole id.
       return Array.from(this.svg.querySelectorAll("g.node")).find((node) => {
-        const prefix = `flowchart-${id}-`;
-        return node.dataset.id === id || (node.id.startsWith(prefix) && /^\d+$/.test(node.id.slice(prefix.length)));
+        if (node.dataset.id === id) return true;
+        const match = /(?:^|-)flowchart-(.+)-\d+$/.exec(node.id);
+        return match !== null && match[1] === id;
       });
     }
 
     findEdge(from, to) {
-      return Array.from(this.svg.querySelectorAll("path")).find((path) => path.id.startsWith(`L_${from}_${to}_`));
+      const pattern = new RegExp(`(?:^|-)L_${from}_${to}_\\d+$`);
+      return Array.from(this.svg.querySelectorAll("path")).find((path) => pattern.test(path.id));
     }
 
     animateEdge(from, to) {

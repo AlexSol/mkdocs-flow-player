@@ -15,8 +15,9 @@ function element() {
 function fixture(steps = [{ node: 'A', state: 'error' }, { node: 'A', state: 'success' }]) {
   const root = element();
   const controls = ['reset', 'previous', 'next', 'play'].map(action => Object.assign(element(), { dataset: { action } }));
-  const nodes = ['A', 'B'].map((id, i) => Object.assign(element(), { id: `flowchart-${id}-${i}` }));
-  const path = { id: 'L_A_B_0', parentNode: { appendChild() {} }, getTotalLength: () => 100, getPointAtLength: x => ({ x, y: 0 }) };
+  // Mermaid >= 11 prefixes every element id with the render id passed to mermaid.render().
+  const nodes = ['A', 'B'].map((id, i) => Object.assign(element(), { id: `flow-player-1-flowchart-${id}-${i}` }));
+  const path = { id: 'flow-player-1-L_A_B_0', parentNode: { appendChild() {} }, getTotalLength: () => 100, getPointAtLength: x => ({ x, y: 0 }) };
   const svg = { querySelectorAll: selector => selector === 'g.node' ? nodes : [path] };
   const fields = new Map();
   for (const name of ['scenario', 'mermaid', 'canvas', 'counter', 'step-title', 'description', 'payload']) fields.set(`.flow-player__${name}`, element());
@@ -40,6 +41,15 @@ function fixture(steps = [{ node: 'A', state: 'error' }, { node: 'A', state: 'su
   player.render(false);
   return { root, player, nodes, fields, controls, clock, pending };
 }
+
+test('node and edge lookup tolerates the Mermaid >= 11 render-id prefix', () => {
+  const { player } = fixture([{ node: 'A' }, { edge: { from: 'A', to: 'B' } }]);
+  assert.equal(player.findNode('A').id, 'flow-player-1-flowchart-A-0');
+  assert.equal(player.findNode('B').id, 'flow-player-1-flowchart-B-1');
+  assert.equal(player.findNode('C'), undefined);
+  assert.equal(player.findEdge('A', 'B').id, 'flow-player-1-L_A_B_0');
+  assert.equal(player.findEdge('A', 'C'), undefined);
+});
 
 test('latest node state wins; Previous and Reset replay deterministically', () => {
   const { player, nodes } = fixture();
