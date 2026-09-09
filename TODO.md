@@ -37,10 +37,10 @@
 - [x] Execute the real-Mermaid browser smoke test in a browser-enabled environment
 - [ ] Watch the first GitHub Actions run and fix any runner-specific failures
 - [ ] Expand browser coverage across themes, mobile layouts and Material navigation
-- [ ] Support Mermaid edge labels and multiple edges between the same nodes robustly
+- [ ] Support Mermaid edge labels and multiple edges between the same nodes robustly — [proposal 0003](docs/proposals/0003-edge-labels-and-parallel-edges.md)
 - [ ] Improve Mermaid ID compatibility across Mermaid releases
-- [ ] Add selectable scenarios sharing one topology
-- [ ] Add node metadata/details and documentation links
+- [ ] Add selectable scenarios sharing one topology — [proposal 0001](docs/proposals/0001-selectable-scenarios.md)
+- [ ] Add node metadata/details and documentation links — [proposal 0002](docs/proposals/0002-node-metadata-and-doc-links.md)
 - [x] Add keyboard navigation and richer accessibility semantics
 - [x] Improve responsive layout and theme integration (Material/light/dark)
 - [x] Add a configurable, vendored Mermaid option for offline documentation

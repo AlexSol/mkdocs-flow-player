@@ -333,4 +333,5 @@ plugin config to use another compatible build or a [vendored copy](#config-optio
 - YAML is converted to JSON at build time.
 - No React, React Flow, JointJS, D3, backend or browser-side YAML parser.
 
-See [TODO.md](TODO.md) for current status and the roadmap.
+See [TODO.md](TODO.md) for current status and the roadmap, and
+[docs/proposals/](docs/proposals/) for roadmap items still under design.
