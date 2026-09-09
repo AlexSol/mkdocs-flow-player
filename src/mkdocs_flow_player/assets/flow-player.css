@@ -1,0 +1,36 @@
+.flow-player {
+  --flow-accent: #4f46e5;
+  --flow-border: color-mix(in srgb, currentColor 18%, transparent);
+  border: 1px solid var(--flow-border);
+  border-radius: 0.75rem;
+  margin: 1.25rem 0;
+  overflow: hidden;
+}
+
+.flow-player__header,
+.flow-player__details,
+.flow-player__controls { padding: 0.75rem 1rem; }
+.flow-player__header { border-bottom: 1px solid var(--flow-border); }
+.flow-player__canvas { min-height: 220px; padding: 1rem; overflow-x: auto; text-align: center; }
+.flow-player__canvas svg { max-width: 100%; height: auto; }
+.flow-player__details { border-top: 1px solid var(--flow-border); min-height: 7rem; }
+.flow-player__counter { color: #6b7280; font-size: 0.8rem; }
+.flow-player__step-title { margin: 0.3rem 0; }
+.flow-player__description { margin: 0.25rem 0; }
+.flow-player__payload { margin: 0.75rem 0 0; padding: 0.75rem; overflow: auto; }
+.flow-player__controls { display: flex; flex-wrap: wrap; gap: 0.5rem; padding-top: 0; }
+.flow-player__controls button { cursor: pointer; padding: 0.4rem 0.8rem; }
+.flow-player__controls button:disabled { cursor: default; opacity: 0.45; }
+.flow-player--invalid { border-color: #dc2626; padding: 1rem; color: #b91c1c; }
+
+.flow-state-active > * { stroke: #2563eb !important; stroke-width: 3px !important; }
+.flow-state-success > * { stroke: #16a34a !important; stroke-width: 3px !important; }
+.flow-state-warning > * { stroke: #d97706 !important; stroke-width: 3px !important; }
+.flow-state-error > * { stroke: #dc2626 !important; stroke-width: 3px !important; }
+.flow-state-waiting > * { stroke: #7c3aed !important; stroke-width: 3px !important; stroke-dasharray: 5 3; }
+.flow-traveller { fill: var(--flow-accent); filter: drop-shadow(0 0 3px var(--flow-accent)); }
+
+@media (prefers-reduced-motion: reduce) {
+  .flow-traveller { display: none; }
+}
+

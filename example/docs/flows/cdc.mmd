@@ -1,0 +1,12 @@
+flowchart LR
+    DB[(Source PostgreSQL)]
+    CDC[Debezium CDC]
+    KAFKA{{Kafka}}
+    CONSUMER[CDC Consumer]
+    TARGET[(Target PostgreSQL)]
+
+    DB -->|WAL| CDC
+    CDC -->|CDC Event| KAFKA
+    KAFKA -->|poll| CONSUMER
+    CONSUMER -->|SQL| TARGET
+

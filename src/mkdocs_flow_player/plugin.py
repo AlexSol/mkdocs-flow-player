@@ -1,0 +1,78 @@
+from __future__ import annotations
+
+import logging
+from importlib.resources import files
+from pathlib import Path
+import shutil
+
+from mkdocs.config import config_options
+from mkdocs.exceptions import PluginError
+from mkdocs.plugins import BasePlugin
+
+from .parser import DIRECTIVE_RE, FlowError, load_topology, load_yaml, parse_directive
+from .renderer import render_player
+from .validator import validate_scenario
+
+
+log = logging.getLogger("mkdocs.plugins.flow-player")
+
+
+class FlowPlayerPlugin(BasePlugin):
+    config_scheme = (
+        ("validation", config_options.Choice(("strict", "warning"), default="strict")),
+        (
+            "mermaid_url",
+            config_options.Type(
+                str,
+                default="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js",
+            ),
+        ),
+    )
+
+    def on_config(self, config):
+        config.extra_javascript.append(self.config["mermaid_url"])
+        config.extra_javascript.append("assets/javascripts/flow-player.js")
+        config.extra_css.append("assets/stylesheets/flow-player.css")
+        return config
+
+    def on_page_markdown(self, markdown, page, config, files):
+        docs_dir = Path(config.docs_dir)
+
+        def replace(match):
+            try:
+                directive = parse_directive(match.group("body"))
+                diagram_path = self._safe_path(docs_dir, directive.diagram)
+                scenario_path = self._safe_path(docs_dir, directive.scenario)
+                topology = load_topology(diagram_path)
+                scenario = load_yaml(scenario_path)
+                validate_scenario(scenario, topology)
+                return render_player(topology.source, scenario)
+            except FlowError as exc:
+                message = f"{page.file.src_path}: {exc}"
+                if self.config["validation"] == "strict":
+                    raise PluginError(f"flow-player: {message}") from exc
+                log.warning(message)
+                return f'<div class="flow-player flow-player--invalid">{message}</div>'
+
+        return DIRECTIVE_RE.sub(replace, markdown)
+
+    def on_post_build(self, config):
+        assets = files("mkdocs_flow_player").joinpath("assets")
+        targets = {
+            "flow-player.js": Path(config.site_dir) / "assets/javascripts/flow-player.js",
+            "flow-player.css": Path(config.site_dir) / "assets/stylesheets/flow-player.css",
+        }
+        for source_name, target in targets.items():
+            target.parent.mkdir(parents=True, exist_ok=True)
+            with assets.joinpath(source_name).open("rb") as source:
+                with target.open("wb") as destination:
+                    shutil.copyfileobj(source, destination)
+
+    @staticmethod
+    def _safe_path(docs_dir: Path, relative: str) -> Path:
+        candidate = (docs_dir / relative).resolve()
+        root = docs_dir.resolve()
+        if candidate != root and root not in candidate.parents:
+            raise FlowError(f"Path escapes docs_dir: {relative}")
+        return candidate
+

@@ -1,0 +1,50 @@
+id: normal-replication
+title: Normal replication
+settings:
+  step_duration: 1500
+steps:
+  - node: DB
+    state: active
+    title: Transaction committed
+    description: PostgreSQL commits the source transaction.
+  - edge:
+      from: DB
+      to: CDC
+    action: travel
+    title: WAL change
+  - node: CDC
+    state: active
+    title: CDC event created
+    payload:
+      table: rules
+      operation: UPDATE
+      lsn: "0/16B3740"
+  - edge:
+      from: CDC
+      to: KAFKA
+    action: travel
+    title: Event published
+  - node: KAFKA
+    state: success
+    title: Event stored
+    payload:
+      topic: rules
+      partition: 2
+      offset: 18342
+  - edge:
+      from: KAFKA
+      to: CONSUMER
+    action: travel
+    title: Event polled
+  - node: CONSUMER
+    state: active
+    title: Processing event
+  - edge:
+      from: CONSUMER
+      to: TARGET
+    action: travel
+    title: SQL applied
+  - node: TARGET
+    state: success
+    title: Transaction committed
+

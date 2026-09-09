@@ -1,0 +1,32 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "mkdocs-flow-player"
+version = "0.1.0"
+description = "Interactive step-by-step Mermaid flows for MkDocs"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "AlexSol" }]
+dependencies = [
+  "mkdocs>=1.5",
+  "PyYAML>=6.0",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=8.0"]
+
+[project.entry-points."mkdocs.plugins"]
+flow-player = "mkdocs_flow_player.plugin:FlowPlayerPlugin"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mkdocs_flow_player"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"src/mkdocs_flow_player/assets" = "mkdocs_flow_player/assets"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+

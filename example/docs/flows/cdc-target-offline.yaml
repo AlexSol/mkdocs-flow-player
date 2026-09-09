@@ -1,0 +1,40 @@
+id: target-offline
+title: Target temporarily offline
+settings:
+  step_duration: 1500
+steps:
+  - node: KAFKA
+    state: active
+    title: Event available
+  - edge:
+      from: KAFKA
+      to: CONSUMER
+    action: travel
+    title: Event polled
+  - node: CONSUMER
+    state: active
+    title: Processing event
+  - edge:
+      from: CONSUMER
+      to: TARGET
+    action: travel
+    title: Write attempted
+  - node: TARGET
+    state: error
+    title: Target unavailable
+    description: Connection to PostgreSQL failed.
+  - node: CONSUMER
+    state: waiting
+    title: Waiting before retry
+  - node: TARGET
+    state: success
+    title: Target recovered
+  - edge:
+      from: CONSUMER
+      to: TARGET
+    action: travel
+    title: Retry
+  - node: TARGET
+    state: success
+    title: Transaction committed
+
