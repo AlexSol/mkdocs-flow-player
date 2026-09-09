@@ -38,7 +38,15 @@ def render_player(
   <script type="application/json" class="flow-player__mermaid">{diagram_text}</script>
   <script type="application/json" class="flow-player__scenario">{scenario_json}</script>
   <script type="application/json" class="flow-player__metadata">{metadata_json}</script>
-  <div class="flow-player__canvas" role="img" tabindex="0" aria-label="{heading} diagram"></div>
+  <div class="flow-player__canvas">
+    <div class="flow-player__canvas-tools" aria-label="Diagram zoom">
+      <button type="button" data-zoom="out" aria-label="Zoom out">-</button>
+      <span class="flow-player__zoom-value" aria-live="polite">100%</span>
+      <button type="button" data-zoom="in" aria-label="Zoom in">+</button>
+      <button type="button" data-zoom="reset" aria-label="Reset zoom">100</button>
+    </div>
+    <div class="flow-player__diagram" role="img" tabindex="0" aria-label="{heading} diagram"></div>
+  </div>
   <nav class="flow-player__controls" aria-label="Flow controls">
     <button type="button" data-action="reset">Reset</button>
     <button type="button" data-action="previous" aria-keyshortcuts="ArrowLeft Home">Previous</button>

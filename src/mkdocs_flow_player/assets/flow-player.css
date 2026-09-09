@@ -15,6 +15,7 @@
   --flow-error: #dc2626;
   --flow-waiting: #7c3aed;
   --flow-invalid: #dc2626;
+  --flow-zoom: 1;
 
   color-scheme: light dark;
   color: var(--flow-fg);
@@ -90,15 +91,65 @@
   outline: 2px solid var(--flow-accent);
   outline-offset: 2px;
 }
+.flow-player__canvas-tools {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+  position: absolute;
+  z-index: 2;
+  top: 0.5rem;
+  right: 0.5rem;
+  padding: 0.15rem;
+  background: color-mix(in srgb, var(--flow-bg) 88%, transparent);
+  border: 1px solid var(--flow-border);
+  border-radius: 0.375rem;
+  box-shadow: 0 0.25rem 0.75rem color-mix(in srgb, var(--flow-fg) 12%, transparent);
+  backdrop-filter: blur(6px);
+}
+.flow-player__canvas-tools button {
+  cursor: pointer;
+  min-width: 1.7rem;
+  min-height: 1.7rem;
+  padding: 0 0.35rem;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  border-radius: 0.25rem;
+  font: inherit;
+  line-height: 1;
+}
+.flow-player__canvas-tools button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--flow-fg) 10%, var(--flow-bg));
+}
+.flow-player__canvas-tools button:disabled { cursor: default; opacity: 0.45; }
+.flow-player__canvas-tools button:focus-visible {
+  outline: 2px solid var(--flow-accent);
+  outline-offset: 2px;
+}
+.flow-player__zoom-value {
+  min-width: 2.45rem;
+  color: var(--flow-muted);
+  font-size: 0.8rem;
+  text-align: center;
+}
 .flow-player__canvas {
+  position: relative;
   min-height: 220px;
   padding: 1rem;
   overflow-x: auto;
   overscroll-behavior-x: contain;
   text-align: center;
 }
-.flow-player__canvas svg { max-width: 100%; height: auto; }
-.flow-player__canvas:focus-visible {
+.flow-player__diagram {
+  padding-top: 1.75rem;
+}
+.flow-player__diagram svg {
+  width: calc(100% * var(--flow-zoom));
+  min-width: calc(28rem * var(--flow-zoom));
+  max-width: none;
+  height: auto;
+}
+.flow-player__diagram:focus-visible {
   outline: 2px solid var(--flow-accent);
   outline-offset: 2px;
 }
@@ -159,6 +210,7 @@
   .flow-player__header,
   .flow-player__details,
   .flow-player__controls { padding: 0.625rem 0.75rem; }
+  .flow-player__canvas-tools { top: 0.375rem; right: 0.375rem; }
   .flow-player__header { align-items: stretch; flex-direction: column; }
   .flow-player__scenario-picker { align-items: stretch; flex-direction: column; }
   .flow-player__scenario-select { max-width: 100%; }

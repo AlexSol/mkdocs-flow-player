@@ -52,7 +52,7 @@ const http = require('node:http');
     assert.equal(await offline.locator('.flow-player__counter').textContent(), 'Ready');
 
     // Keyboard: focus the diagram and drive playback with the arrow keys.
-    await offline.locator('.flow-player__canvas').focus();
+    await offline.locator('.flow-player__diagram').focus();
     await page.keyboard.press('ArrowRight');
     assert.equal(await offline.locator('.flow-player__counter').textContent(), 'Step 1/9');
     await page.keyboard.press('End');

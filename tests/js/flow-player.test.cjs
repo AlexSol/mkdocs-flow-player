@@ -6,6 +6,7 @@ function element() {
   const classes = new Set();
   return {
     dataset: {}, isConnected: true, textContent: '', listeners: {},
+    style: { values: {}, setProperty(k, v) { this.values[k] = v; } },
     classList: { add: (...v) => v.forEach(x => classes.add(x)), remove: (...v) => v.forEach(x => classes.delete(x)), contains: x => classes.has(x) },
     classes, setAttribute(k, v) { this[k] = String(v); },
     removeAttribute(k) { delete this[k]; },
@@ -19,6 +20,7 @@ function element() {
 function fixture(steps = [{ node: 'A', state: 'error' }, { node: 'A', state: 'success' }], extra = {}) {
   const root = element();
   const controls = ['reset', 'previous', 'next', 'play'].map(action => Object.assign(element(), { dataset: { action } }));
+  const zoomControls = ['out', 'in', 'reset'].map(action => Object.assign(element(), { dataset: { zoom: action } }));
   // Mermaid >= 11 prefixes every element id with the render id passed to mermaid.render().
   const nodes = ['A', 'B'].map((id, i) => Object.assign(element(), { id: `flow-player-1-flowchart-${id}-${i}` }));
   // g.edgePaths inside the diagram root; the traveller layer is appended to the root
@@ -27,7 +29,7 @@ function fixture(steps = [{ node: 'A', state: 'error' }, { node: 'A', state: 'su
   const path = { id: 'flow-player-1-L_A_B_0', parentNode: { appendChild() {}, parentNode: diagramRoot }, getTotalLength: () => 100, getPointAtLength: x => ({ x, y: 0 }) };
   const svg = { querySelectorAll: selector => selector === 'g.node' ? nodes : [path] };
   const fields = new Map();
-  for (const name of ['scenario', 'mermaid', 'metadata', 'canvas', 'counter', 'step-title', 'node-summary', 'description', 'payload']) fields.set(`.flow-player__${name}`, element());
+  for (const name of ['scenario', 'mermaid', 'metadata', 'canvas', 'counter', 'step-title', 'node-summary', 'description', 'payload', 'zoom-value']) fields.set(`.flow-player__${name}`, element());
   const docLink = element();
   fields.set('.flow-player__node-doc', Object.assign(element(), { querySelector: () => docLink, link: docLink }));
   if (extra.select) fields.set('.flow-player__scenario-select', Object.assign(element(), { value: '0', tagName: 'SELECT' }));
@@ -35,7 +37,7 @@ function fixture(steps = [{ node: 'A', state: 'error' }, { node: 'A', state: 'su
   fields.get('.flow-player__metadata').textContent = JSON.stringify(extra.metadata ?? { nodes: {} });
   fields.get('.flow-player__mermaid').textContent = JSON.stringify('flowchart LR\nA --> B');
   root.querySelector = selector => selector === 'svg' ? svg : fields.get(selector);
-  root.querySelectorAll = () => controls;
+  root.querySelectorAll = selector => selector === '[data-zoom]' ? zoomControls : controls;
   let time = 0, id = 0;
   const pending = new Map();
   const clock = {
@@ -50,7 +52,7 @@ function fixture(steps = [{ node: 'A', state: 'error' }, { node: 'A', state: 'su
   player.svg = svg;
   player.ready = true;
   player.render(false);
-  return { root, player, nodes, fields, controls, clock, pending, diagramRoot };
+  return { root, player, nodes, fields, controls, zoomControls, clock, pending, diagramRoot };
 }
 
 test('node and edge lookup tolerates the Mermaid >= 11 render-id prefix', () => {
@@ -148,6 +150,34 @@ test('external metadata doc links open in a separate browsing context', () => {
   player.next();
   assert.equal(fields.get('.flow-player__node-doc').link.target, '_blank');
   assert.equal(fields.get('.flow-player__node-doc').link.rel, 'noopener noreferrer');
+});
+
+test('zoom controls update scale and button states', () => {
+  const { root, player, fields, zoomControls } = fixture();
+  const zoomOut = zoomControls.find(button => button.dataset.zoom === 'out');
+  const zoomIn = zoomControls.find(button => button.dataset.zoom === 'in');
+  const zoomReset = zoomControls.find(button => button.dataset.zoom === 'reset');
+
+  assert.equal(root.style.values['--flow-zoom'], '1');
+  assert.equal(fields.get('.flow-player__zoom-value').textContent, '100%');
+  assert.equal(zoomReset.disabled, true);
+
+  zoomIn.dispatch('click');
+  assert.equal(player.zoom, 1.2);
+  assert.equal(root.style.values['--flow-zoom'], '1.2');
+  assert.equal(fields.get('.flow-player__zoom-value').textContent, '120%');
+  assert.equal(zoomReset.disabled, false);
+
+  zoomReset.dispatch('click');
+  assert.equal(player.zoom, 1);
+  assert.equal(zoomReset.disabled, true);
+
+  for (let i = 0; i < 4; i++) zoomOut.dispatch('click');
+  assert.equal(player.zoom, 0.6);
+  assert.equal(zoomOut.disabled, true);
+  for (let i = 0; i < 7; i++) zoomIn.dispatch('click');
+  assert.equal(player.zoom, 1.8);
+  assert.equal(zoomIn.disabled, true);
 });
 
 test('keyboard events inside the scenario select are left to the browser', () => {

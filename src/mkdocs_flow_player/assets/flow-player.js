@@ -1,6 +1,9 @@
 (() => {
   "use strict";
   const STATES = ["active", "success", "warning", "error", "waiting"];
+  const ZOOM_MIN = 0.6;
+  const ZOOM_MAX = 1.8;
+  const ZOOM_STEP = 0.2;
   let renderSequence = 0;
   let mermaidConfigured = false;
 
@@ -29,11 +32,15 @@
       this.marker = null;
       this.svg = null;
       this.ready = false;
+      this.zoom = 1;
       this.scenarioSelect = this.element.querySelector(".flow-player__scenario-select");
+      this.zoomValue = this.element.querySelector(".flow-player__zoom-value");
       this.duration = this.scenario.settings?.step_duration ?? 1500;
       this.bindScenarioPicker();
+      this.bindZoomControls();
       this.bindControls();
       this.element.addEventListener("keydown", (event) => this.handleKey(event));
+      this.applyZoom();
       this.updateButtons();
     }
 
@@ -44,7 +51,7 @@
         mermaidConfigured = true;
       }
       const { svg } = await window.mermaid.render(`flow-player-${++renderSequence}`, this.source);
-      this.element.querySelector(".flow-player__canvas").innerHTML = svg;
+      (this.element.querySelector(".flow-player__diagram") ?? this.element.querySelector(".flow-player__canvas")).innerHTML = svg;
       this.svg = this.element.querySelector("svg");
       this.validateScenarioSvg();
       this.ready = true;
@@ -74,6 +81,38 @@
         if (["reset", "previous", "next", "play"].includes(action)) {
           button.addEventListener("click", () => { if (this.ready) this[action](); });
         }
+      }
+    }
+
+    bindZoomControls() {
+      for (const button of this.element.querySelectorAll("[data-zoom]")) {
+        button.addEventListener("click", () => this.changeZoom(button.dataset.zoom));
+      }
+    }
+
+    changeZoom(action) {
+      if (action === "in") this.setZoom(this.zoom + ZOOM_STEP);
+      else if (action === "out") this.setZoom(this.zoom - ZOOM_STEP);
+      else if (action === "reset") this.setZoom(1);
+    }
+
+    setZoom(value) {
+      const clamped = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, value));
+      this.zoom = Math.round(clamped * 100) / 100;
+      this.applyZoom();
+    }
+
+    applyZoom() {
+      this.element.style.setProperty("--flow-zoom", String(this.zoom));
+      if (this.zoomValue) this.zoomValue.textContent = `${Math.round(this.zoom * 100)}%`;
+      this.updateZoomButtons();
+    }
+
+    updateZoomButtons() {
+      for (const button of this.element.querySelectorAll("[data-zoom]")) {
+        button.disabled = (button.dataset.zoom === "out" && this.zoom <= ZOOM_MIN)
+          || (button.dataset.zoom === "in" && this.zoom >= ZOOM_MAX)
+          || (button.dataset.zoom === "reset" && this.zoom === 1);
       }
     }
 
@@ -308,6 +347,7 @@
           button.setAttribute("aria-pressed", String(this.playing));
         }
       }
+      this.updateZoomButtons();
     }
   }
 
@@ -323,7 +363,7 @@
       } catch (error) {
         if (player) { player.ready = false; player.pause(); }
         element.classList.add("flow-player--invalid");
-        const target = element.querySelector(".flow-player__canvas") ?? element;
+        const target = element.querySelector(".flow-player__diagram") ?? element.querySelector(".flow-player__canvas") ?? element;
         target.textContent = `Flow rendering failed: ${error.message}`;
         element.querySelectorAll("[data-action]").forEach((button) => { button.disabled = true; });
       }

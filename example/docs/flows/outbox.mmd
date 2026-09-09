@@ -1,4 +1,4 @@
-flowchart LR
+flowchart TB
     APP[Application]
     DB[(Primary DB)]
     OUTBOX[(Outbox table)]
@@ -7,8 +7,8 @@ flowchart LR
     CONSUMER[Consumer]
     READMODEL[(Read model)]
 
-    APP -->|commit business data| DB
     APP -->|publish directly| BROKER
+    APP -->|commit business data| DB
     APP -->|same transaction| OUTBOX
     OUTBOX -->|poll pending row| RELAY
     RELAY -->|publish event| BROKER

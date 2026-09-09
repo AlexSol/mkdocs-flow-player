@@ -209,6 +209,8 @@ embedded as HTML-safe JSON (abridged here):
   edge path, in a `flow-player__marker-layer` overlay so it stays above the edge labels.
 - Play advances one step every `step_duration` ms; Previous and Reset rebuild node
   state without replaying travel animations.
+- Diagram zoom controls scale Mermaid's SVG in place; wide diagrams remain
+  scrollable inside the canvas.
 
 ## Scenario DSL (v0.1)
 

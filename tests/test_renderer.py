@@ -16,7 +16,12 @@ def test_renderer_embeds_json_and_escapes_html():
 
 def test_controls_render_before_details_so_variable_text_does_not_shift_them():
     html = render_player("flowchart LR\nA[A]", {"id": "demo", "steps": [{"node": "A"}]})
+    assert html.index('class="flow-player__canvas"') < html.index('class="flow-player__canvas-tools"')
+    assert html.index('class="flow-player__canvas-tools"') < html.index('class="flow-player__diagram"')
     assert html.index('flow-player__controls') < html.index('flow-player__details')
+    assert 'data-zoom="out"' in html
+    assert 'data-zoom="in"' in html
+    assert 'data-zoom="reset"' in html
 
 
 def test_renderer_adds_scenario_select_for_multiple_scenarios():
