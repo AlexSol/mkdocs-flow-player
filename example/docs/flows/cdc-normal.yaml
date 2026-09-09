@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/AlexSol/mkdocs-flow-player/main/src/mkdocs_flow_player/schema/scenario.schema.json
 id: normal-replication
 title: Normal replication
 settings:

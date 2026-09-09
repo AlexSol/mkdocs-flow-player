@@ -50,7 +50,7 @@ browser commands locally before declaring end-to-end browser compatibility.
 - [ ] Add keyboard navigation and richer accessibility semantics
 - [ ] Improve responsive layout and theme integration (Material/light/dark)
 - [ ] Add a configurable, vendored Mermaid option for offline documentation
-- [ ] Add JSON Schema and editor autocomplete for the YAML DSL
+- [x] Add JSON Schema and editor autocomplete for the YAML DSL
 - [x] Add duplicate flow/scenario ID validation across the site
 - [ ] Publish package releases to PyPI with changelog and compatibility matrix
 

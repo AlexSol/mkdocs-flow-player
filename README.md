@@ -194,6 +194,32 @@ Payload accepts JSON-compatible values, including `false`, `0` and `null`.
 YAML dates/timestamps become ISO strings; NaN/Infinity, binary values, sets,
 non-string object keys, cyclic aliases and nesting beyond 64 levels are rejected.
 
+### Editor autocomplete
+
+A JSON Schema for the scenario file ships with the package at
+[`src/mkdocs_flow_player/schema/scenario.schema.json`](src/mkdocs_flow_player/schema/scenario.schema.json).
+Point the [YAML language server](https://github.com/redhat-developer/yaml-language-server)
+(built into the VS Code *YAML* extension) at it with a modeline at the top of a
+scenario file:
+
+```yaml
+# yaml-language-server: $schema=https://raw.githubusercontent.com/AlexSol/mkdocs-flow-player/main/src/mkdocs_flow_player/schema/scenario.schema.json
+id: normal-replication
+...
+```
+
+or map it in `settings.json` for all `flows/*.yaml`:
+
+```json
+"yaml.schemas": {
+  "https://raw.githubusercontent.com/AlexSol/mkdocs-flow-player/main/src/mkdocs_flow_player/schema/scenario.schema.json": "docs/**/flows/*.yaml"
+}
+```
+
+The schema validates structure only. Node and edge references are checked against
+the topology during `mkdocs build`. `from mkdocs_flow_player.schema import
+scenario_schema` returns the parsed schema for other tooling.
+
 ### Supported Mermaid syntax
 
 The build-time validator deliberately supports a **flowchart subset**, not every
