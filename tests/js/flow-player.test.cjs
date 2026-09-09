@@ -1,0 +1,139 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const { FlowPlayer, initialize } = require('../../src/mkdocs_flow_player/assets/flow-player.js');
+
+function element() {
+  const classes = new Set();
+  return {
+    dataset: {}, isConnected: true, textContent: '',
+    classList: { add: (...v) => v.forEach(x => classes.add(x)), remove: (...v) => v.forEach(x => classes.delete(x)), contains: x => classes.has(x) },
+    classes, setAttribute(k, v) { this[k] = String(v); }, addEventListener() {},
+    remove() { this.isConnected = false; },
+  };
+}
+
+function fixture(steps = [{ node: 'A', state: 'error' }, { node: 'A', state: 'success' }]) {
+  const root = element();
+  const controls = ['reset', 'previous', 'next', 'play'].map(action => Object.assign(element(), { dataset: { action } }));
+  const nodes = ['A', 'B'].map((id, i) => Object.assign(element(), { id: `flowchart-${id}-${i}` }));
+  const path = { id: 'L_A_B_0', parentNode: { appendChild() {} }, getTotalLength: () => 100, getPointAtLength: x => ({ x, y: 0 }) };
+  const svg = { querySelectorAll: selector => selector === 'g.node' ? nodes : [path] };
+  const fields = new Map();
+  for (const name of ['scenario', 'mermaid', 'canvas', 'counter', 'step-title', 'description', 'payload']) fields.set(`.flow-player__${name}`, element());
+  fields.get('.flow-player__scenario').textContent = JSON.stringify({ id: 'test', settings: { step_duration: 1000 }, steps });
+  fields.get('.flow-player__mermaid').textContent = JSON.stringify('flowchart LR\nA --> B');
+  root.querySelector = selector => selector === 'svg' ? svg : fields.get(selector);
+  root.querySelectorAll = () => controls;
+  let time = 0, id = 0;
+  const pending = new Map();
+  const clock = {
+    now: () => time,
+    request: cb => { pending.set(++id, cb); return id; },
+    cancel: id => pending.delete(id),
+    advance(ms) { time += ms; const callbacks = [...pending.values()]; pending.clear(); callbacks.forEach(cb => cb(time)); },
+  };
+  global.window = { matchMedia: () => ({ matches: false }), mermaid: { initialize() {}, async render() { return { svg: '<svg></svg>' }; } } };
+  global.document = { createElementNS: () => element() };
+  const player = new FlowPlayer(root, clock);
+  player.svg = svg;
+  player.ready = true;
+  player.render(false);
+  return { root, player, nodes, fields, controls, clock, pending };
+}
+
+test('latest node state wins; Previous and Reset replay deterministically', () => {
+  const { player, nodes } = fixture();
+  player.next();
+  assert.deepEqual([...nodes[0].classes], ['flow-state-error']);
+  player.next();
+  assert.deepEqual([...nodes[0].classes], ['flow-state-success']);
+  player.previous();
+  assert.deepEqual([...nodes[0].classes], ['flow-state-error']);
+  player.reset();
+  assert.equal(nodes[0].classes.size, 0);
+  assert.equal(player.currentStep, -1);
+});
+
+test('Pause freezes marker and Resume uses same step and remaining time', () => {
+  const { player, clock, pending } = fixture([{ edge: { from: 'A', to: 'B' } }, { node: 'B' }]);
+  player.play();
+  clock.advance(250);
+  assert.equal(player.marker.cx, '25');
+  player.pause();
+  assert.equal(pending.size, 0);
+  clock.advance(5000);
+  assert.equal(player.marker.cx, '25');
+  assert.equal(player.elapsed, 250);
+  player.play();
+  assert.equal(player.currentStep, 0);
+  clock.advance(250);
+  assert.equal(player.marker.cx, '50');
+  clock.advance(500);
+  assert.equal(player.currentStep, 1);
+  assert.equal(player.marker, null);
+  clock.advance(1000);
+  assert.equal(player.playing, false);
+  assert.equal(pending.size, 0);
+  player.play();
+  assert.equal(player.currentStep, 0);
+});
+
+test('manual navigation cancels animation and pending playback', () => {
+  const { player, clock, pending } = fixture([{ node: 'A' }, { edge: { from: 'A', to: 'B' } }]);
+  player.play();
+  clock.advance(1000);
+  const marker = player.marker;
+  player.previous();
+  assert.equal(marker.isConnected, false);
+  assert.equal(player.marker, null);
+  assert.equal(pending.size, 0);
+  clock.advance(5000);
+  assert.equal(player.currentStep, 0);
+});
+
+test('false, zero and null payloads are displayed', () => {
+  const { player, fields } = fixture([false, 0, null].map(payload => ({ node: 'A', payload })));
+  for (const value of ['false', '0', 'null']) {
+    player.next();
+    assert.equal(fields.get('.flow-player__payload').hidden, false);
+    assert.equal(fields.get('.flow-player__payload').textContent, value);
+  }
+});
+
+test('invalid placeholders, malformed JSON and render errors do not block valid players', async () => {
+  const warning = fixture().root;
+  warning.classList.add('flow-player--invalid');
+  const malformed = fixture();
+  malformed.fields.get('.flow-player__scenario').textContent = '{broken';
+  const badRender = fixture();
+  badRender.fields.get('.flow-player__mermaid').textContent = JSON.stringify('bad');
+  const valid = fixture();
+  window.mermaid.render = async (_, source) => {
+    if (source === 'bad') throw new Error('renderer failed');
+    return { svg: '<svg></svg>' };
+  };
+  await initialize({ querySelectorAll: () => [warning, malformed.root, badRender.root, valid.root] });
+  assert.equal(warning.dataset.initialized, undefined);
+  assert.equal(malformed.root.classList.contains('flow-player--invalid'), true);
+  assert.equal(badRender.root.classList.contains('flow-player--invalid'), true);
+  assert.equal(valid.root.classList.contains('flow-player--invalid'), false);
+  assert.equal(valid.controls.find(b => b.dataset.action === 'next').disabled, false);
+  await initialize({ querySelectorAll: () => [valid.root] });
+});
+
+test('missing renderer disables controls without throwing past initializer', async () => {
+  const { root, controls } = fixture();
+  window.mermaid = undefined;
+  await initialize({ querySelectorAll: () => [root] });
+  assert.equal(root.classList.contains('flow-player--invalid'), true);
+  assert.ok(controls.every(button => button.disabled));
+});
+
+test('detaching a player stops its playback clock', () => {
+  const { player, root, clock, pending } = fixture();
+  player.play();
+  root.isConnected = false;
+  clock.advance(250);
+  assert.equal(player.playing, false);
+  assert.equal(pending.size, 0);
+});

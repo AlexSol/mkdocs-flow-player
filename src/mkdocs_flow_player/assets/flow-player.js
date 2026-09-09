@@ -1,84 +1,125 @@
 (() => {
+  "use strict";
   const STATES = ["active", "success", "warning", "error", "waiting"];
+  let renderSequence = 0;
+  let mermaidConfigured = false;
 
   class FlowPlayer {
-    constructor(element) {
+    constructor(element, clock = {
+      now: () => performance.now(),
+      request: (callback) => requestAnimationFrame(callback),
+      cancel: (id) => cancelAnimationFrame(id),
+    }) {
       this.element = element;
+      this.clock = clock;
       this.scenario = JSON.parse(element.querySelector(".flow-player__scenario").textContent);
-      this.source = element.querySelector(".flow-player__mermaid").textContent;
+      this.source = JSON.parse(element.querySelector(".flow-player__mermaid").textContent);
       this.currentStep = -1;
       this.playing = false;
-      this.timer = null;
+      this.elapsed = 0;
+      this.frame = null;
+      this.lastTime = null;
+      this.marker = null;
       this.svg = null;
+      this.ready = false;
+      this.duration = this.scenario.settings?.step_duration ?? 1500;
       this.bindControls();
+      this.updateButtons();
     }
 
     async init() {
-      if (!window.mermaid) {
-        this.fail("Mermaid is not available");
-        return;
+      if (!window.mermaid) throw new Error("Mermaid is not available");
+      if (!mermaidConfigured) {
+        window.mermaid.initialize({ startOnLoad: false, securityLevel: "strict" });
+        mermaidConfigured = true;
       }
-      window.mermaid.initialize({ startOnLoad: false, securityLevel: "loose" });
-      const renderId = `flow-player-${this.scenario.id}-${Math.random().toString(36).slice(2)}`;
-      const { svg } = await window.mermaid.render(renderId, this.source);
+      const { svg } = await window.mermaid.render(`flow-player-${++renderSequence}`, this.source);
       this.element.querySelector(".flow-player__canvas").innerHTML = svg;
       this.svg = this.element.querySelector("svg");
-      this.render();
+      for (const step of this.scenario.steps) {
+        if (step.node && !this.findNode(step.node)) throw new Error(`SVG node not found: ${step.node}`);
+        if (step.edge && !this.findEdge(step.edge.from, step.edge.to)) {
+          throw new Error(`SVG edge not found: ${step.edge.from} → ${step.edge.to}`);
+        }
+      }
+      this.ready = true;
+      this.render(false);
     }
 
     bindControls() {
-      this.element.querySelectorAll("[data-action]").forEach((button) => {
-        button.addEventListener("click", () => this[button.dataset.action]());
-      });
+      for (const button of this.element.querySelectorAll("[data-action]")) {
+        const action = button.dataset.action;
+        if (["reset", "previous", "next", "play"].includes(action)) {
+          button.addEventListener("click", () => { if (this.ready) this[action](); });
+        }
+      }
+    }
+
+    goTo(index, animate = true) {
+      this.stopClock();
+      this.currentStep = index;
+      this.elapsed = 0;
+      this.render(animate);
+      this.startClock();
     }
 
     next() {
-      if (this.currentStep < this.scenario.steps.length - 1) {
-        this.currentStep += 1;
-        this.render(true);
-      } else {
-        this.pause();
-      }
+      this.pause();
+      if (this.currentStep < this.scenario.steps.length - 1) this.goTo(this.currentStep + 1);
     }
 
     previous() {
       this.pause();
-      if (this.currentStep >= 0) this.currentStep -= 1;
-      this.render(false);
+      this.goTo(Math.max(-1, this.currentStep - 1), false);
     }
 
     reset() {
       this.pause();
-      this.currentStep = -1;
-      this.render(false);
+      this.goTo(-1, false);
     }
 
     play() {
-      if (this.playing) {
-        this.pause();
-        return;
-      }
-      if (this.currentStep >= this.scenario.steps.length - 1) this.currentStep = -1;
+      if (this.playing) return this.pause();
       this.playing = true;
-      this.updatePlayButton();
-      this.next();
-      this.scheduleNext();
+      if (this.currentStep < 0 || (this.currentStep === this.scenario.steps.length - 1 && this.elapsed >= this.duration)) {
+        this.goTo(0);
+      } else {
+        // Resume the same step and its remaining animation/dwell time.
+        this.startClock();
+      }
+      this.updateButtons();
     }
 
     pause() {
       this.playing = false;
-      window.clearTimeout(this.timer);
-      this.timer = null;
-      this.updatePlayButton();
+      this.stopClock();
+      this.updateButtons();
     }
 
-    scheduleNext() {
-      if (!this.playing) return;
-      const delay = this.scenario.settings?.step_duration ?? 1500;
-      this.timer = window.setTimeout(() => {
-        this.next();
-        this.scheduleNext();
-      }, delay);
+    stopClock() {
+      if (this.frame !== null) this.clock.cancel(this.frame);
+      this.frame = null;
+      this.lastTime = null;
+    }
+
+    startClock() {
+      if (this.frame !== null || (!this.playing && !this.marker)) return;
+      this.lastTime = this.clock.now();
+      this.frame = this.clock.request((now) => this.tick(now));
+    }
+
+    tick(now) {
+      this.frame = null;
+      if (!this.element.isConnected) return this.pause();
+      this.elapsed += Math.max(0, now - this.lastTime);
+      this.lastTime = now;
+      this.positionMarker();
+      if (this.playing && this.elapsed >= this.duration) {
+        if (this.currentStep < this.scenario.steps.length - 1) this.goTo(this.currentStep + 1);
+        else this.pause();
+      } else {
+        this.startClock();
+      }
     }
 
     render(animate) {
@@ -92,89 +133,107 @@
     }
 
     clearVisualState() {
-      this.svg.querySelectorAll(".flow-state-active,.flow-state-success,.flow-state-warning,.flow-state-error,.flow-state-waiting")
-        .forEach((node) => STATES.forEach((state) => node.classList.remove(`flow-state-${state}`)));
-      this.element.querySelectorAll(".flow-traveller").forEach((item) => item.remove());
+      for (const node of this.svg.querySelectorAll("g.node")) {
+        node.classList.remove(...STATES.map((state) => `flow-state-${state}`));
+      }
+      if (this.marker) this.marker.remove();
+      this.marker = null;
     }
 
     applyStep(step, animate) {
       if (step.node) {
         const node = this.findNode(step.node);
-        if (node) node.classList.add(`flow-state-${step.state ?? "active"}`);
-      } else if (step.edge && animate && step.action === "travel") {
+        node.classList.remove(...STATES.map((state) => `flow-state-${state}`));
+        node.classList.add(`flow-state-${step.state ?? "active"}`);
+      } else if (step.edge && animate) {
         this.animateEdge(step.edge.from, step.edge.to);
       }
     }
 
     findNode(id) {
-      return this.svg.querySelector(`[id^="flowchart-${CSS.escape(id)}-"]`)
-        || this.svg.querySelector(`[data-id="${CSS.escape(id)}"]`);
+      return Array.from(this.svg.querySelectorAll("g.node")).find((node) => {
+        const prefix = `flowchart-${id}-`;
+        return node.dataset.id === id || (node.id.startsWith(prefix) && /^\d+$/.test(node.id.slice(prefix.length)));
+      });
     }
 
     findEdge(from, to) {
-      return this.svg.querySelector(`[id^="L_${CSS.escape(from)}_${CSS.escape(to)}_"]`);
+      return Array.from(this.svg.querySelectorAll("path")).find((path) => path.id.startsWith(`L_${from}_${to}_`));
     }
 
     animateEdge(from, to) {
-      const path = this.findEdge(from, to);
-      if (!path || typeof path.getTotalLength !== "function") return;
-      const marker = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-      marker.setAttribute("r", "6");
-      marker.setAttribute("class", "flow-traveller");
-      path.parentNode.appendChild(marker);
-      const length = path.getTotalLength();
-      const started = performance.now();
-      const duration = Math.min(this.scenario.settings?.step_duration ?? 1500, 1200);
-      const frame = (now) => {
-        if (!marker.isConnected) return;
-        const progress = Math.min((now - started) / duration, 1);
-        const point = path.getPointAtLength(length * progress);
-        marker.setAttribute("cx", point.x);
-        marker.setAttribute("cy", point.y);
-        if (progress < 1) requestAnimationFrame(frame);
-        else marker.remove();
-      };
-      requestAnimationFrame(frame);
+      if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+      this.path = this.findEdge(from, to);
+      this.pathLength = this.path.getTotalLength();
+      this.marker = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      this.marker.setAttribute("r", "6");
+      this.marker.setAttribute("class", "flow-traveller");
+      this.path.parentNode.appendChild(this.marker);
+      this.positionMarker();
+    }
+
+    positionMarker() {
+      if (!this.marker) return;
+      const progress = Math.min(this.elapsed / Math.min(this.duration, 1200), 1);
+      const point = this.path.getPointAtLength(this.pathLength * progress);
+      this.marker.setAttribute("cx", point.x);
+      this.marker.setAttribute("cy", point.y);
+      if (progress >= 1) {
+        this.marker.remove();
+        this.marker = null;
+      }
     }
 
     renderDetails() {
       const step = this.scenario.steps[this.currentStep];
       this.element.querySelector(".flow-player__counter").textContent = step
         ? `Step ${this.currentStep + 1}/${this.scenario.steps.length}` : "Ready";
-      this.element.querySelector(".flow-player__step-title").textContent = step?.title ?? "Select Next to start";
+      this.element.querySelector(".flow-player__step-title").textContent = step
+        ? (step.title ?? `Step ${this.currentStep + 1}`) : "Select Next to start";
       this.element.querySelector(".flow-player__description").textContent = step?.description ?? "";
       const payload = this.element.querySelector(".flow-player__payload");
-      payload.hidden = !step?.payload;
-      payload.textContent = step?.payload ? JSON.stringify(step.payload, null, 2) : "";
+      const hasPayload = step && Object.prototype.hasOwnProperty.call(step, "payload");
+      payload.hidden = !hasPayload;
+      payload.textContent = hasPayload ? JSON.stringify(step.payload, null, 2) : "";
     }
 
     updateButtons() {
-      this.element.querySelector('[data-action="previous"]').disabled = this.currentStep < 0;
-      this.element.querySelector('[data-action="next"]').disabled = this.currentStep >= this.scenario.steps.length - 1;
-    }
-
-    updatePlayButton() {
-      this.element.querySelector('[data-action="play"]').textContent = this.playing ? "Pause" : "Play";
-    }
-
-    fail(message) {
-      this.element.classList.add("flow-player--invalid");
-      this.element.querySelector(".flow-player__canvas").textContent = message;
+      for (const button of this.element.querySelectorAll("[data-action]")) {
+        button.disabled = !this.ready
+          || (button.dataset.action === "previous" && this.currentStep < 0)
+          || (button.dataset.action === "next" && this.currentStep >= this.scenario.steps.length - 1);
+        if (button.dataset.action === "play") {
+          button.textContent = this.playing ? "Pause" : "Play";
+          button.setAttribute("aria-pressed", String(this.playing));
+        }
+      }
     }
   }
 
-  const initialize = () => {
-    document.querySelectorAll(".flow-player").forEach((element) => {
-      if (element.dataset.initialized) return;
+  async function initialize(root = document) {
+    for (const element of root.querySelectorAll(".flow-player")) {
+      if (element.dataset.initialized || element.classList.contains("flow-player--invalid")) continue;
       element.dataset.initialized = "true";
-      new FlowPlayer(element).init().catch((error) => {
-        element.querySelector(".flow-player__canvas").textContent = `Flow rendering failed: ${error.message}`;
-      });
-    });
-  };
+      let player;
+      try {
+        // Constructor errors and asynchronous renderer errors are isolated alike.
+        player = new FlowPlayer(element);
+        await player.init();
+      } catch (error) {
+        if (player) { player.ready = false; player.pause(); }
+        element.classList.add("flow-player--invalid");
+        const target = element.querySelector(".flow-player__canvas") ?? element;
+        target.textContent = `Flow rendering failed: ${error.message}`;
+        element.querySelectorAll("[data-action]").forEach((button) => { button.disabled = true; });
+      }
+    }
+  }
 
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", initialize);
-  else initialize();
-  if (typeof document$ !== "undefined") document$.subscribe(initialize);
+  if (typeof module !== "undefined" && module.exports) {
+    module.exports = { FlowPlayer, initialize };
+  } else {
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => initialize());
+    else initialize();
+    if (typeof document$ !== "undefined") document$.subscribe(() => initialize());
+  }
 })();
-

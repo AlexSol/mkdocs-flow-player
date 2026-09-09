@@ -5,4 +5,4 @@ __pycache__/
 site/
 dist/
 *.egg-info/
-
+node_modules/

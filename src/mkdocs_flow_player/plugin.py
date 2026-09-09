@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import html
 from importlib.resources import files
 from pathlib import Path
 import shutil
@@ -9,7 +10,7 @@ from mkdocs.config import config_options
 from mkdocs.exceptions import PluginError
 from mkdocs.plugins import BasePlugin
 
-from .parser import DIRECTIVE_RE, FlowError, load_topology, load_yaml, parse_directive
+from .parser import FlowError, load_topology, load_yaml, parse_directive, replace_directives
 from .renderer import render_player
 from .validator import validate_scenario
 
@@ -24,7 +25,7 @@ class FlowPlayerPlugin(BasePlugin):
             "mermaid_url",
             config_options.Type(
                 str,
-                default="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js",
+                default="https://cdn.jsdelivr.net/npm/mermaid@11.17.2/dist/mermaid.min.js",
             ),
         ),
     )
@@ -38,9 +39,9 @@ class FlowPlayerPlugin(BasePlugin):
     def on_page_markdown(self, markdown, page, config, files):
         docs_dir = Path(config.docs_dir)
 
-        def replace(match):
+        def replace(body):
             try:
-                directive = parse_directive(match.group("body"))
+                directive = parse_directive(body)
                 diagram_path = self._safe_path(docs_dir, directive.diagram)
                 scenario_path = self._safe_path(docs_dir, directive.scenario)
                 topology = load_topology(diagram_path)
@@ -52,9 +53,9 @@ class FlowPlayerPlugin(BasePlugin):
                 if self.config["validation"] == "strict":
                     raise PluginError(f"flow-player: {message}") from exc
                 log.warning(message)
-                return f'<div class="flow-player flow-player--invalid">{message}</div>'
+                return f'<div class="flow-player--invalid" role="alert">{html.escape(message)}</div>'
 
-        return DIRECTIVE_RE.sub(replace, markdown)
+        return replace_directives(markdown, replace)
 
     def on_post_build(self, config):
         assets = files("mkdocs_flow_player").joinpath("assets")
@@ -75,4 +76,3 @@ class FlowPlayerPlugin(BasePlugin):
         if candidate != root and root not in candidate.parents:
             raise FlowError(f"Path escapes docs_dir: {relative}")
         return candidate
-

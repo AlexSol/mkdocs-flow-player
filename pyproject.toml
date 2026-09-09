@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "mkdocs-flow-player"
-version = "0.1.0"
+version = "0.1.1"
 description = "Interactive step-by-step Mermaid flows for MkDocs"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -29,4 +29,3 @@ packages = ["src/mkdocs_flow_player"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-
