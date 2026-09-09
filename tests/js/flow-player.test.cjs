@@ -8,6 +8,7 @@ function element() {
     dataset: {}, isConnected: true, textContent: '',
     classList: { add: (...v) => v.forEach(x => classes.add(x)), remove: (...v) => v.forEach(x => classes.delete(x)), contains: x => classes.has(x) },
     classes, setAttribute(k, v) { this[k] = String(v); }, addEventListener() {},
+    appendChild(child) { if (child) child.parentNode = this; return child; },
     remove() { this.isConnected = false; },
   };
 }
@@ -17,7 +18,10 @@ function fixture(steps = [{ node: 'A', state: 'error' }, { node: 'A', state: 'su
   const controls = ['reset', 'previous', 'next', 'play'].map(action => Object.assign(element(), { dataset: { action } }));
   // Mermaid >= 11 prefixes every element id with the render id passed to mermaid.render().
   const nodes = ['A', 'B'].map((id, i) => Object.assign(element(), { id: `flow-player-1-flowchart-${id}-${i}` }));
-  const path = { id: 'flow-player-1-L_A_B_0', parentNode: { appendChild() {} }, getTotalLength: () => 100, getPointAtLength: x => ({ x, y: 0 }) };
+  // g.edgePaths inside the diagram root; the traveller layer is appended to the root
+  // (last child) so it paints above edge labels and nodes.
+  const diagramRoot = { children: [], appendChild(c) { this.children.push(c); }, querySelector: () => null };
+  const path = { id: 'flow-player-1-L_A_B_0', parentNode: { appendChild() {}, parentNode: diagramRoot }, getTotalLength: () => 100, getPointAtLength: x => ({ x, y: 0 }) };
   const svg = { querySelectorAll: selector => selector === 'g.node' ? nodes : [path] };
   const fields = new Map();
   for (const name of ['scenario', 'mermaid', 'canvas', 'counter', 'step-title', 'description', 'payload']) fields.set(`.flow-player__${name}`, element());
@@ -39,7 +43,7 @@ function fixture(steps = [{ node: 'A', state: 'error' }, { node: 'A', state: 'su
   player.svg = svg;
   player.ready = true;
   player.render(false);
-  return { root, player, nodes, fields, controls, clock, pending };
+  return { root, player, nodes, fields, controls, clock, pending, diagramRoot };
 }
 
 test('node and edge lookup tolerates the Mermaid >= 11 render-id prefix', () => {
@@ -62,6 +66,14 @@ test('latest node state wins; Previous and Reset replay deterministically', () =
   player.reset();
   assert.equal(nodes[0].classes.size, 0);
   assert.equal(player.currentStep, -1);
+});
+
+test('the traveller renders in an overlay layer so labels never occlude it', () => {
+  const { player, diagramRoot } = fixture([{ edge: { from: 'A', to: 'B' } }, { node: 'B' }]);
+  player.play();
+  const layer = diagramRoot.children.at(-1); // appended last => painted above labels/nodes
+  assert.equal(layer.class, 'flow-player__marker-layer');
+  assert.equal(player.marker.parentNode, layer);
 });
 
 test('Pause freezes marker and Resume uses same step and remaining time', () => {

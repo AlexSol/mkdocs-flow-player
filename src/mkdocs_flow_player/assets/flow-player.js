@@ -172,8 +172,22 @@
       this.marker = document.createElementNS("http://www.w3.org/2000/svg", "circle");
       this.marker.setAttribute("r", "6");
       this.marker.setAttribute("class", "flow-traveller");
-      this.path.parentNode.appendChild(this.marker);
+      this.markerLayer().appendChild(this.marker);
       this.positionMarker();
+    }
+
+    markerLayer() {
+      // The traveller must paint above edge labels and nodes. Mermaid puts no
+      // transform on `g.edgePaths` or its parent, so path coordinates stay valid
+      // in an overlay group appended last to that shared parent.
+      const container = this.path.parentNode.parentNode ?? this.path.parentNode;
+      let layer = container.querySelector?.(":scope > .flow-player__marker-layer");
+      if (!layer) {
+        layer = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        layer.setAttribute("class", "flow-player__marker-layer");
+        container.appendChild(layer);
+      }
+      return layer;
     }
 
     positionMarker() {

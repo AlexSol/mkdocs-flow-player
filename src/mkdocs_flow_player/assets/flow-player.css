@@ -13,12 +13,14 @@
 .flow-player__header { border-bottom: 1px solid var(--flow-border); }
 .flow-player__canvas { min-height: 220px; padding: 1rem; overflow-x: auto; text-align: center; }
 .flow-player__canvas svg { max-width: 100%; height: auto; }
+/* Controls sit above the details so a long description or payload never shifts them. */
+.flow-player__controls { border-top: 1px solid var(--flow-border); }
 .flow-player__details { border-top: 1px solid var(--flow-border); min-height: 7rem; }
 .flow-player__counter { color: #6b7280; font-size: 0.8rem; }
 .flow-player__step-title { margin: 0.3rem 0; }
 .flow-player__description { margin: 0.25rem 0; }
 .flow-player__payload { margin: 0.75rem 0 0; padding: 0.75rem; overflow: auto; }
-.flow-player__controls { display: flex; flex-wrap: wrap; gap: 0.5rem; padding-top: 0; }
+.flow-player__controls { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .flow-player__controls button { cursor: pointer; padding: 0.4rem 0.8rem; }
 .flow-player__controls button:disabled { cursor: default; opacity: 0.45; }
 .flow-player--invalid { border-color: #dc2626; padding: 1rem; color: #b91c1c; }
@@ -29,6 +31,14 @@
 .flow-state-error > * { stroke: #dc2626 !important; stroke-width: 3px !important; }
 .flow-state-waiting > * { stroke: #7c3aed !important; stroke-width: 3px !important; stroke-dasharray: 5 3; }
 .flow-traveller { fill: var(--flow-accent); filter: drop-shadow(0 0 3px var(--flow-accent)); }
+
+/* Collapse Mermaid's stacked translucent grey edge-label pills into one solid
+   chip on the text itself. The traveller paints above labels, in
+   .flow-player__marker-layer, so it stays visible where it crosses a label. */
+.flow-player__canvas .edgeLabel,
+.flow-player__canvas span.edgeLabel,
+.flow-player__canvas .edgeLabel .labelBkg { background: transparent !important; }
+.flow-player__canvas .edgeLabel p { background: var(--flow-canvas-bg, #fff) !important; }
 
 @media (prefers-reduced-motion: reduce) {
   .flow-traveller { display: none; }
