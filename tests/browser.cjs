@@ -87,6 +87,12 @@ const http = require('node:http');
     // Dark theme: state colours switch to their bright variants.
     const darkPage = await browser.newPage({ colorScheme: 'dark' });
     await darkPage.goto(url);
+    await darkPage.evaluate(() => {
+      const slate = document.querySelector('#__palette_1');
+      slate.checked = true;
+      slate.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await darkPage.waitForFunction(() => document.body.dataset.mdColorScheme === 'slate');
     await darkPage.waitForFunction(() => document.querySelectorAll('.flow-player svg').length === 2);
     await darkPage.waitForFunction(() => [...document.querySelectorAll('[data-action="next"]')].every(b => !b.disabled));
     const dark = darkPage.locator('[data-flow-id="target-offline"]');
