@@ -55,6 +55,28 @@ test('node and edge lookup tolerates the Mermaid >= 11 render-id prefix', () => 
   assert.equal(player.findEdge('A', 'C'), undefined);
 });
 
+test('node and edge lookup tolerates alternate Mermaid id shapes', () => {
+  const { player } = fixture([{ node: 'A' }, { edge: { from: 'A', to: 'B' } }]);
+  const nodes = [
+    Object.assign(element(), { id: 'flowchart-A-0' }),
+    Object.assign(element(), { id: 'render:flowchart-B-1' }),
+    Object.assign(element(), { id: 'legacy-node', dataset: { id: 'C' } }),
+  ];
+  const paths = [
+    Object.assign(element(), { id: 'L_A_B_0' }),
+    Object.assign(element(), { id: 'render_L_B_C_0' }),
+    Object.assign(element(), { id: 'legacy-edge', dataset: { id: 'L_C_A' } }),
+  ];
+  player.svg = { querySelectorAll: selector => selector === 'g.node' ? nodes : paths };
+
+  assert.equal(player.findNode('A').id, 'flowchart-A-0');
+  assert.equal(player.findNode('B').id, 'render:flowchart-B-1');
+  assert.equal(player.findNode('C').id, 'legacy-node');
+  assert.equal(player.findEdge('A', 'B').id, 'L_A_B_0');
+  assert.equal(player.findEdge('B', 'C').id, 'render_L_B_C_0');
+  assert.equal(player.findEdge('C', 'A').id, 'legacy-edge');
+});
+
 test('latest node state wins; Previous and Reset replay deterministically', () => {
   const { player, nodes } = fixture();
   player.next();

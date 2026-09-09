@@ -38,7 +38,7 @@
 - [ ] Watch the first GitHub Actions run and fix any runner-specific failures
 - [ ] Expand browser coverage across themes, mobile layouts and Material navigation
 - [ ] Support Mermaid edge labels and multiple edges between the same nodes robustly — [proposal 0003](docs/proposals/0003-edge-labels-and-parallel-edges.md)
-- [ ] Improve Mermaid ID compatibility across Mermaid releases
+- [x] Improve Mermaid ID compatibility across Mermaid releases
 - [ ] Add selectable scenarios sharing one topology — [proposal 0001](docs/proposals/0001-selectable-scenarios.md)
 - [ ] Add node metadata/details and documentation links — [proposal 0002](docs/proposals/0002-node-metadata-and-doc-links.md)
 - [x] Add keyboard navigation and richer accessibility semantics
