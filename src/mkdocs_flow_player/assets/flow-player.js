@@ -24,6 +24,7 @@
       this.ready = false;
       this.duration = this.scenario.settings?.step_duration ?? 1500;
       this.bindControls();
+      this.element.addEventListener("keydown", (event) => this.handleKey(event));
       this.updateButtons();
     }
 
@@ -52,6 +53,24 @@
         if (["reset", "previous", "next", "play"].includes(action)) {
           button.addEventListener("click", () => { if (this.ready) this[action](); });
         }
+      }
+    }
+
+    handleKey(event) {
+      if (!this.ready || event.ctrlKey || event.metaKey || event.altKey) return;
+      const moves = {
+        ArrowRight: "next", ArrowDown: "next",
+        ArrowLeft: "previous", ArrowUp: "previous",
+        Home: "reset", End: "last",
+      };
+      const move = moves[event.key];
+      if (!move) return;
+      event.preventDefault();
+      if (move === "last") {
+        this.pause();
+        this.goTo(this.scenario.steps.length - 1, false);
+      } else {
+        this[move]();
       }
     }
 
@@ -216,10 +235,16 @@
     }
 
     updateButtons() {
+      const active = this.element.ownerDocument?.activeElement;
       for (const button of this.element.querySelectorAll("[data-action]")) {
-        button.disabled = !this.ready
+        const disabled = !this.ready
           || (button.dataset.action === "previous" && this.currentStep < 0)
           || (button.dataset.action === "next" && this.currentStep >= this.scenario.steps.length - 1);
+        // Keep keyboard focus in the control bar when the focused button self-disables.
+        if (disabled && this.ready && button === active) {
+          this.element.querySelector('[data-action="play"]')?.focus?.();
+        }
+        button.disabled = disabled;
         if (button.dataset.action === "play") {
           button.textContent = this.playing ? "Pause" : "Play";
           button.setAttribute("aria-pressed", String(this.playing));

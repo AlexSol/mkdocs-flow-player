@@ -260,6 +260,13 @@ This does not sandbox the rest of a MkDocs site: publish only reviewed documenta
 - Manual Next/Previous stops autoplay. Play after completed autoplay restarts.
 - A failed player does not prevent other players on the page from initializing.
 
+Keyboard: the player is a labelled `role="group"` and the diagram is a focusable
+`role="img"`. With focus anywhere inside it, <kbd>&rarr;</kbd>/<kbd>&darr;</kbd>
+step forward, <kbd>&larr;</kbd>/<kbd>&uarr;</kbd> step back, <kbd>Home</kbd> resets
+and <kbd>End</kbd> jumps to the last step. A control that disables itself at an end
+of the range hands focus to Play. The details panel is an `aria-live` region, so
+each step is announced.
+
 ### Tests
 
 ```bash
