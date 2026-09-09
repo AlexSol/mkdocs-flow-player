@@ -6,6 +6,10 @@ MkDocs Flow Player combines a Mermaid topology with a small YAML scenario DSL.
 The MkDocs plugin validates references during the build and embeds a vanilla-JS
 player with Reset, Previous, Next and Play/Pause controls.
 
+![MkDocs Flow Player replaying the CDC scenario: each node lights up in turn while a marker travels the edges](docs/demo.svg)
+
+<sub>Illustrative SVG mock-up of the player. The real player renders the topology with Mermaid and is driven by the controls; see the [worked example](#worked-example).</sub>
+
 ## Quick start
 
 ```bash
@@ -37,6 +41,126 @@ scenario: flows/cdc-normal.yaml
 
 Paths are resolved from `docs_dir`. Mermaid node IDs are the public API used by
 the scenario. A broken node or edge reference fails `mkdocs build` in strict mode.
+
+## Worked example
+
+These two files live under [`example/docs/flows/`](example/docs/flows/) and produce
+the flow shown above.
+
+**Topology** — `cdc.mmd`:
+
+```mermaid
+flowchart LR
+    DB[(Source PostgreSQL)]
+    CDC[Debezium CDC]
+    KAFKA{{Kafka}}
+    CONSUMER[CDC Consumer]
+    TARGET[(Target PostgreSQL)]
+
+    DB -->|WAL| CDC
+    CDC -->|CDC Event| KAFKA
+    KAFKA -->|poll| CONSUMER
+    CONSUMER -->|SQL| TARGET
+```
+
+**Scenario** — `cdc-normal.yaml`. Every `node` and every `from`/`to` must resolve to
+an ID in the topology:
+
+```yaml
+id: normal-replication
+title: Normal replication
+settings:
+  step_duration: 1500
+steps:
+  - node: DB
+    state: active
+    title: Transaction committed
+    description: PostgreSQL commits the source transaction.
+  - edge:
+      from: DB
+      to: CDC
+    action: travel
+    title: WAL change
+  - node: CDC
+    state: active
+    title: CDC event created
+    payload:
+      table: rules
+      operation: UPDATE
+      lsn: "0/16B3740"
+  - edge:
+      from: CDC
+      to: KAFKA
+    action: travel
+    title: Event published
+  - node: KAFKA
+    state: success
+    title: Event stored
+    payload:
+      topic: rules
+      partition: 2
+      offset: 18342
+  - edge:
+      from: KAFKA
+      to: CONSUMER
+    action: travel
+    title: Event polled
+  - node: CONSUMER
+    state: active
+    title: Processing event
+  - edge:
+      from: CONSUMER
+      to: TARGET
+    action: travel
+    title: SQL applied
+  - node: TARGET
+    state: success
+    title: Transaction committed
+```
+
+**Page** — reference both from any Markdown page under `docs_dir`:
+
+```text
+::: interactive-flow
+diagram: flows/cdc.mmd
+scenario: flows/cdc-normal.yaml
+:::
+```
+
+**Rendered HTML** — during `mkdocs build` the plugin validates every reference and
+replaces the directive with a self-contained player. Source and scenario are
+embedded as HTML-safe JSON (abridged here):
+
+```html
+<div class="flow-player" data-flow-id="normal-replication">
+  <header class="flow-player__header"><strong>Normal replication</strong></header>
+  <script type="application/json" class="flow-player__mermaid">"flowchart LR\n    DB[(Source PostgreSQL)]\n    …"</script>
+  <script type="application/json" class="flow-player__scenario">{"id":"normal-replication","title":"Normal replication","settings":{"step_duration":1500},"steps":[{"node":"DB","state":"active","title":"Transaction committed", …}]}</script>
+  <div class="flow-player__canvas" aria-label="Normal replication"></div>
+  <nav class="flow-player__controls" aria-label="Flow controls">
+    <button type="button" data-action="reset">Reset</button>
+    <button type="button" data-action="previous">Previous</button>
+    <button type="button" data-action="next">Next</button>
+    <button type="button" data-action="play">Play</button>
+  </nav>
+  <section class="flow-player__details" aria-live="polite">
+    <div class="flow-player__counter">Ready</div>
+    <h4 class="flow-player__step-title">Select Next to start</h4>
+    <p class="flow-player__description"></p>
+    <pre class="flow-player__payload" hidden></pre>
+  </section>
+</div>
+```
+
+**In the browser** — `flow-player.js` renders the Mermaid source into
+`.flow-player__canvas`, then walks the scenario as the reader steps through it:
+
+- `node` steps set one `flow-state-*` class (`active`, `success`, `warning`, `error`,
+  `waiting`) on the matching `g.node`; the last applicable step per node wins.
+- `edge` + `action: travel` steps send a `<circle class="flow-traveller">` along the
+  edge path, in a `flow-player__marker-layer` overlay so it stays above the edge labels.
+- Play advances one step every `step_duration` ms; Previous and Reset rebuild node
+  state without replaying travel animations.
 
 ## Scenario DSL (v0.1)
 

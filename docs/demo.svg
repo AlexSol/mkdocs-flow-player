@@ -1,0 +1,117 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 200" width="900" height="200" role="img" aria-label="MkDocs Flow Player replaying the CDC replication scenario: each node lights up in turn while a marker travels along the edges.">
+  <style>
+    :root {
+      --card: #ffffff; --border: #e5e7eb; --heading: #1f2937;
+      --node-bg: #f8fafc; --node-stroke: #cbd5e1; --node-text: #334155;
+      --edge: #94a3b8; --label: #64748b;
+      --active: #2563eb; --active-bg: #eff6ff;
+      --success: #16a34a; --success-bg: #f0fdf4;
+      --dot: #4f46e5; --btn-bg: #f3f4f6; --btn-text: #6b7280;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --card: #0d1117; --border: #30363d; --heading: #e6edf3;
+        --node-bg: #161b22; --node-stroke: #3d444d; --node-text: #c9d1d9;
+        --edge: #6e7681; --label: #8b949e;
+        --active: #58a6ff; --active-bg: #10243c;
+        --success: #3fb950; --success-bg: #102b1a;
+        --dot: #a5b4fc; --btn-bg: #21262d; --btn-text: #8b949e;
+      }
+    }
+    text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    .frame { fill: var(--card); stroke: var(--border); }
+    .rule { stroke: var(--border); stroke-width: 1; }
+    .heading { fill: var(--heading); font-size: 15px; font-weight: 700; }
+    .node { fill: var(--node-bg); stroke: var(--node-stroke); stroke-width: 1.4px; }
+    .nlabel { fill: var(--node-text); font-size: 12px; }
+    .edge { stroke: var(--edge); stroke-width: 1.6px; }
+    .elabel { fill: var(--label); font-size: 9px; }
+    .dot { fill: var(--dot); opacity: 0; }
+    .btn { fill: var(--btn-bg); }
+    .blabel { fill: var(--btn-text); font-size: 11px; }
+
+    .n1 { animation: pulseActive  12s  0.2s infinite; }
+    .n2 { animation: pulseActive  12s  2.5s infinite; }
+    .n3 { animation: pulseSuccess 12s  4.8s infinite; }
+    .n4 { animation: pulseActive  12s  7.1s infinite; }
+    .n5 { animation: pulseSuccess 12s  9.4s infinite; }
+    .t1 { animation: travel 12s 1.5s infinite; }
+    .t2 { animation: travel 12s 3.8s infinite; }
+    .t3 { animation: travel 12s 6.1s infinite; }
+    .t4 { animation: travel 12s 8.4s infinite; }
+
+    @keyframes pulseActive {
+      0%        { fill: var(--node-bg);  stroke: var(--node-stroke); stroke-width: 1.4px; }
+      2%        { fill: var(--active-bg); stroke: var(--active);      stroke-width: 2.4px; }
+      10%       { fill: var(--active-bg); stroke: var(--active);      stroke-width: 2.4px; }
+      12%, 100% { fill: var(--node-bg);  stroke: var(--node-stroke); stroke-width: 1.4px; }
+    }
+    @keyframes pulseSuccess {
+      0%        { fill: var(--node-bg);   stroke: var(--node-stroke); stroke-width: 1.4px; }
+      2%        { fill: var(--success-bg); stroke: var(--success);     stroke-width: 2.4px; }
+      10%       { fill: var(--success-bg); stroke: var(--success);     stroke-width: 2.4px; }
+      12%, 100% { fill: var(--node-bg);   stroke: var(--node-stroke); stroke-width: 1.4px; }
+    }
+    @keyframes travel {
+      0%       { opacity: 0; transform: translateX(0px); }
+      1%       { opacity: 1; }
+      8%       { opacity: 1; transform: translateX(62px); }
+      9%, 100% { opacity: 0; transform: translateX(62px); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .n1, .n2, .n3, .n4, .n5, .t1, .t2, .t3, .t4 { animation: none; }
+      .dot { opacity: 0; }
+    }
+  </style>
+
+  <defs>
+    <marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#94a3b8"/>
+    </marker>
+  </defs>
+
+  <rect class="frame" x="1" y="1" width="898" height="198" rx="14"/>
+  <text class="heading" x="24" y="33">Normal replication</text>
+  <line class="rule" x1="1" y1="52" x2="899" y2="52"/>
+
+  <!-- edges -->
+  <line class="edge" x1="134" y1="110" x2="196" y2="110" marker-end="url(#ah)"/>
+  <line class="edge" x1="310" y1="110" x2="372" y2="110" marker-end="url(#ah)"/>
+  <line class="edge" x1="486" y1="110" x2="548" y2="110" marker-end="url(#ah)"/>
+  <line class="edge" x1="662" y1="110" x2="724" y2="110" marker-end="url(#ah)"/>
+
+  <text class="elabel" x="166" y="103" text-anchor="middle">WAL</text>
+  <text class="elabel" x="342" y="103" text-anchor="middle">CDC Event</text>
+  <text class="elabel" x="518" y="103" text-anchor="middle">poll</text>
+  <text class="elabel" x="694" y="103" text-anchor="middle">SQL</text>
+
+  <!-- nodes -->
+  <rect class="node n1" x="24"  y="86" width="108" height="48" rx="8"/>
+  <rect class="node n2" x="200" y="86" width="108" height="48" rx="8"/>
+  <rect class="node n3" x="376" y="86" width="108" height="48" rx="8"/>
+  <rect class="node n4" x="552" y="86" width="108" height="48" rx="8"/>
+  <rect class="node n5" x="728" y="86" width="108" height="48" rx="8"/>
+
+  <text class="nlabel" x="78"  y="114" text-anchor="middle">Source PG</text>
+  <text class="nlabel" x="254" y="114" text-anchor="middle">Debezium CDC</text>
+  <text class="nlabel" x="430" y="114" text-anchor="middle">Kafka</text>
+  <text class="nlabel" x="606" y="114" text-anchor="middle">CDC Consumer</text>
+  <text class="nlabel" x="782" y="114" text-anchor="middle">Target PG</text>
+
+  <!-- travelling markers -->
+  <circle class="dot t1" cx="134" cy="110" r="5"/>
+  <circle class="dot t2" cx="310" cy="110" r="5"/>
+  <circle class="dot t3" cx="486" cy="110" r="5"/>
+  <circle class="dot t4" cx="662" cy="110" r="5"/>
+
+  <!-- controls -->
+  <line class="rule" x1="1" y1="156" x2="899" y2="156"/>
+  <rect class="btn" x="24"  y="164" width="52" height="24" rx="5"/>
+  <rect class="btn" x="84"  y="164" width="70" height="24" rx="5"/>
+  <rect class="btn" x="162" y="164" width="46" height="24" rx="5"/>
+  <rect class="btn" x="216" y="164" width="46" height="24" rx="5"/>
+  <text class="blabel" x="50"  y="180" text-anchor="middle">Reset</text>
+  <text class="blabel" x="119" y="180" text-anchor="middle">Previous</text>
+  <text class="blabel" x="185" y="180" text-anchor="middle">Next</text>
+  <text class="blabel" x="239" y="180" text-anchor="middle">Play</text>
+</svg>
