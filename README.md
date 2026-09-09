@@ -39,6 +39,18 @@ scenario: flows/cdc-normal.yaml
 :::
 ```
 
+Or share one topology across several selectable scenarios:
+
+```text
+::: interactive-flow
+title: CDC replication
+diagram: flows/cdc.mmd
+scenarios:
+  - flows/cdc-normal.yaml
+  - flows/cdc-target-offline.yaml
+:::
+```
+
 Paths are resolved from `docs_dir`. Mermaid node IDs are the public API used by
 the scenario. A broken node or edge reference fails `mkdocs build` in strict mode.
 Each scenario `id` must be unique across the whole site; a repeat is reported like
@@ -148,6 +160,19 @@ scenario: flows/cdc-normal.yaml
 :::
 ```
 
+Use `scenarios:` instead of `scenario:` to render one Mermaid topology with a
+scenario picker:
+
+```text
+::: interactive-flow
+title: CDC replication
+diagram: flows/cdc.mmd
+scenarios:
+  - flows/cdc-normal.yaml
+  - flows/cdc-target-offline.yaml
+:::
+```
+
 **Rendered HTML** — during `mkdocs build` the plugin validates every reference and
 replaces the directive with a self-contained player. Source and scenario are
 embedded as HTML-safe JSON (abridged here):
@@ -199,12 +224,21 @@ steps:
       to: CDC
     action: travel
     title: WAL change
+  - edge:
+      from: CDC
+      to: KAFKA
+      label: CDC Event
+    action: travel
 ```
 
 Supported states: `active`, `success`, `warning`, `error`, `waiting`.
 
 `state` defaults to `active` on node steps. Edge steps accept only `action: travel`
 (also the default). Each step contains exactly one of `node` or `edge`.
+An edge is selected by `from` and `to`; when several Mermaid edges share the same
+ordered node pair, add either `nth` (1-based source order) or `label` (the text
+inside Mermaid's `|label|`). If both are present, they must point to the same edge.
+When an edge step has no `title`, its Mermaid label is shown as the step title.
 `title` and `description` must be strings; `step_duration` is an integer from
 1 to 600000 milliseconds (default 1500). Unknown fields and invalid types are
 reported as flow validation errors, including in `warning` mode.
@@ -212,6 +246,13 @@ reported as flow validation errors, including in `warning` mode.
 Payload accepts JSON-compatible values, including `false`, `0` and `null`.
 YAML dates/timestamps become ISO strings; NaN/Infinity, binary values, sets,
 non-string object keys, cyclic aliases and nesting beyond 64 levels are rejected.
+
+### Directive DSL
+
+`diagram` is required. Use exactly one of `scenario` or `scenarios`; `scenarios`
+must be a non-empty list of YAML paths and renders a combo-box in the player
+header. Optional `title` labels the shared player; without it, the first
+scenario's title is used.
 
 ### Editor autocomplete
 
@@ -263,8 +304,9 @@ use Mermaid entities for embedded quotes. Newlines/semicolons separate statement
 
 Subgraphs, grouped links (`A & B`), class/style/click statements, custom edge IDs,
 frontmatter, and new `@{...}` shape syntax are not supported in this version.
-Parallel edges between the same ordered pair are rejected because `from`/`to`
-cannot identify one unambiguously. Unsupported syntax fails with a readable error.
+Parallel edges between the same ordered pair are supported when scenario steps
+disambiguate them with `edge.nth` or `edge.label`. Unsupported syntax fails with
+a readable error.
 
 The Markdown directive is top-level; examples inside backtick/tilde fences or
 indented code blocks remain literal. Source and scenario data are embedded as

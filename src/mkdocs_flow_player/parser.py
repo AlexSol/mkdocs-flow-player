@@ -20,14 +20,27 @@ class FlowError(ValueError):
 @dataclass(frozen=True)
 class Directive:
     diagram: str
-    scenario: str
+    scenarios: tuple[str, ...]
+    title: str | None = None
+
+    @property
+    def scenario(self) -> str:
+        return self.scenarios[0]
+
+
+@dataclass(frozen=True)
+class Edge:
+    left: str
+    right: str
+    index: int
+    label: str | None = None
 
 
 @dataclass(frozen=True)
 class Topology:
     source: str
     nodes: frozenset[str]
-    edges: frozenset[tuple[str, str]]
+    edges: tuple[Edge, ...]
 
 
 def parse_directive(body: str) -> Directive:
@@ -37,14 +50,32 @@ def parse_directive(body: str) -> Directive:
         raise FlowError(f"Invalid interactive-flow directive: {exc}") from exc
     if not isinstance(data, dict):
         raise FlowError("interactive-flow directive must be a mapping")
-    missing = [key for key in ("diagram", "scenario") if not data.get(key)]
+    has_scenario = bool(data.get("scenario"))
+    has_scenarios = bool(data.get("scenarios"))
+    missing = [key for key in ("diagram",) if not data.get(key)]
+    if not has_scenario and not has_scenarios:
+        missing.append("scenario")
     if missing:
         raise FlowError(f"interactive-flow directive is missing: {', '.join(missing)}")
-    if set(data) - {"diagram", "scenario"}:
-        raise FlowError("Unknown directive field; expected diagram and scenario")
-    if any(not isinstance(data[key], str) for key in ("diagram", "scenario")):
-        raise FlowError("diagram and scenario paths must be strings")
-    return Directive(diagram=data["diagram"], scenario=data["scenario"])
+    if has_scenario and has_scenarios:
+        raise FlowError("interactive-flow directive must use either scenario or scenarios, not both")
+    if set(data) - {"diagram", "scenario", "scenarios", "title"}:
+        raise FlowError("Unknown directive field; expected diagram, scenario, scenarios or title")
+    if not isinstance(data["diagram"], str):
+        raise FlowError("diagram path must be a string")
+    if "title" in data and not isinstance(data["title"], str):
+        raise FlowError("title must be a string")
+    if has_scenario:
+        if not isinstance(data["scenario"], str):
+            raise FlowError("scenario path must be a string")
+        scenarios = (data["scenario"],)
+    else:
+        scenarios_data = data["scenarios"]
+        if (not isinstance(scenarios_data, list) or not scenarios_data
+                or any(not isinstance(item, str) or not item for item in scenarios_data)):
+            raise FlowError("scenarios must be a non-empty list of paths")
+        scenarios = tuple(scenarios_data)
+    return Directive(diagram=data["diagram"], scenarios=scenarios, title=data.get("title"))
 
 
 def replace_directives(markdown: str, render: Callable[[str], str]) -> str:
@@ -163,12 +194,23 @@ def _node(text: str, offset: int) -> tuple[str, int]:
     return node, offset
 
 
+def _edge_label(text: str, offset: int) -> tuple[str | None, int]:
+    while offset < len(text) and text[offset].isspace():
+        offset += 1
+    if offset >= len(text) or text[offset] != "|":
+        return None, offset
+    end = text.find("|", offset + 1)
+    if end < 0:
+        raise FlowError("Unterminated edge label")
+    return text[offset + 1:end].strip(), end + 1
+
+
 def parse_topology(source: str) -> Topology:
     """Validate a documented flowchart subset, not the full Mermaid grammar."""
     statements = _statements(source)
     if not statements or not re.fullmatch(r"(?:flowchart|graph)\s+(?:LR|RL|TB|TD|BT)", statements[0]):
         raise FlowError("Expected flowchart/graph LR, RL, TB, TD or BT on its own line")
-    nodes, edges = set(), set()
+    nodes, edges, counts = set(), [], {}
     for statement in statements[1:]:
         left, offset = _node(statement, 0)
         nodes.add(left)
@@ -179,19 +221,13 @@ def parse_topology(source: str) -> Topology:
             if not link:
                 raise FlowError(f"Unsupported Mermaid syntax near: {statement[offset:]}. See README syntax contract")
             offset = link.end()
-            while offset < len(statement) and statement[offset].isspace():
-                offset += 1
-            if offset < len(statement) and statement[offset] == "|":
-                end = statement.find("|", offset + 1)
-                if end < 0:
-                    raise FlowError("Unterminated edge label")
-                offset = end + 1
+            label, offset = _edge_label(statement, offset)
             right, offset = _node(statement, offset)
             nodes.add(right)
-            if (left, right) in edges:
-                raise FlowError(f"Parallel edge {left}->{right} is ambiguous in the current DSL")
-            edges.add((left, right))
+            pair = (left, right)
+            counts[pair] = counts.get(pair, 0) + 1
+            edges.append(Edge(left, right, counts[pair], label))
             left = right
     if not nodes:
         raise FlowError("No Mermaid nodes found")
-    return Topology(source, frozenset(nodes), frozenset(edges))
+    return Topology(source, frozenset(nodes), tuple(edges))

@@ -5,15 +5,17 @@ const { FlowPlayer, initialize } = require('../../src/mkdocs_flow_player/assets/
 function element() {
   const classes = new Set();
   return {
-    dataset: {}, isConnected: true, textContent: '',
+    dataset: {}, isConnected: true, textContent: '', listeners: {},
     classList: { add: (...v) => v.forEach(x => classes.add(x)), remove: (...v) => v.forEach(x => classes.delete(x)), contains: x => classes.has(x) },
-    classes, setAttribute(k, v) { this[k] = String(v); }, addEventListener() {},
+    classes, setAttribute(k, v) { this[k] = String(v); },
+    addEventListener(type, handler) { this.listeners[type] = handler; },
+    dispatch(type) { this.listeners[type]?.({ target: this }); },
     appendChild(child) { if (child) child.parentNode = this; return child; },
     remove() { this.isConnected = false; },
   };
 }
 
-function fixture(steps = [{ node: 'A', state: 'error' }, { node: 'A', state: 'success' }]) {
+function fixture(steps = [{ node: 'A', state: 'error' }, { node: 'A', state: 'success' }], extra = {}) {
   const root = element();
   const controls = ['reset', 'previous', 'next', 'play'].map(action => Object.assign(element(), { dataset: { action } }));
   // Mermaid >= 11 prefixes every element id with the render id passed to mermaid.render().
@@ -25,7 +27,8 @@ function fixture(steps = [{ node: 'A', state: 'error' }, { node: 'A', state: 'su
   const svg = { querySelectorAll: selector => selector === 'g.node' ? nodes : [path] };
   const fields = new Map();
   for (const name of ['scenario', 'mermaid', 'canvas', 'counter', 'step-title', 'description', 'payload']) fields.set(`.flow-player__${name}`, element());
-  fields.get('.flow-player__scenario').textContent = JSON.stringify({ id: 'test', settings: { step_duration: 1000 }, steps });
+  if (extra.select) fields.set('.flow-player__scenario-select', Object.assign(element(), { value: '0', tagName: 'SELECT' }));
+  fields.get('.flow-player__scenario').textContent = JSON.stringify(extra.scenarios ?? { id: 'test', settings: { step_duration: 1000 }, steps });
   fields.get('.flow-player__mermaid').textContent = JSON.stringify('flowchart LR\nA --> B');
   root.querySelector = selector => selector === 'svg' ? svg : fields.get(selector);
   root.querySelectorAll = () => controls;
@@ -75,6 +78,51 @@ test('node and edge lookup tolerates alternate Mermaid id shapes', () => {
   assert.equal(player.findEdge('A', 'B').id, 'L_A_B_0');
   assert.equal(player.findEdge('B', 'C').id, 'render_L_B_C_0');
   assert.equal(player.findEdge('C', 'A').id, 'legacy-edge');
+});
+
+test('edge lookup can select parallel edges by nth', () => {
+  const { player } = fixture([{ edge: { from: 'A', to: 'B', nth: 2 } }]);
+  const paths = [
+    Object.assign(element(), { id: 'flow-player-1-L_A_B_0' }),
+    Object.assign(element(), { id: 'flow-player-1-L_A_B_1' }),
+  ];
+  player.svg = { querySelectorAll: selector => selector === 'g.node' ? [] : paths };
+
+  assert.equal(player.findEdge('A', 'B', 1).id, 'flow-player-1-L_A_B_0');
+  assert.equal(player.findEdge('A', 'B', 2).id, 'flow-player-1-L_A_B_1');
+  assert.equal(player.findEdge('A', 'B', 3), undefined);
+});
+
+test('edge label is used as the title fallback', () => {
+  const { player, fields } = fixture([{ edge: { from: 'A', to: 'B', nth: 1, label: 'retry' } }]);
+  player.next();
+  assert.equal(fields.get('.flow-player__step-title').textContent, 'retry');
+});
+
+test('scenario select switches scenarios and resets playback', () => {
+  const scenarios = [
+    { id: 'one', settings: { step_duration: 1000 }, steps: [{ node: 'A', title: 'First' }] },
+    { id: 'two', settings: { step_duration: 2500 }, steps: [{ node: 'B', title: 'Second' }] },
+  ];
+  const { root, player, fields } = fixture([], { scenarios, select: true });
+  player.next();
+  assert.equal(player.currentStep, 0);
+  fields.get('.flow-player__scenario-select').value = '1';
+  fields.get('.flow-player__scenario-select').dispatch('change');
+
+  assert.equal(player.scenario.id, 'two');
+  assert.equal(player.duration, 2500);
+  assert.equal(player.currentStep, -1);
+  assert.equal(root.dataset.flowId, 'two');
+  assert.equal(fields.get('.flow-player__counter').textContent, 'Ready');
+});
+
+test('keyboard events inside the scenario select are left to the browser', () => {
+  const { player } = fixture([{ node: 'A' }]);
+  let prevented = false;
+  player.handleKey({ key: 'ArrowRight', target: { tagName: 'SELECT' }, preventDefault() { prevented = true; } });
+  assert.equal(player.currentStep, -1);
+  assert.equal(prevented, false);
 });
 
 test('latest node state wins; Previous and Reset replay deterministically', () => {

@@ -49,12 +49,15 @@ class FlowPlayerPlugin(BasePlugin):
             try:
                 directive = parse_directive(body)
                 diagram_path = self._safe_path(docs_dir, directive.diagram)
-                scenario_path = self._safe_path(docs_dir, directive.scenario)
                 topology = load_topology(diagram_path)
-                scenario = load_yaml(scenario_path)
-                validate_scenario(scenario, topology)
-                self._claim_flow_id(scenario["id"], page.file.src_path)
-                return render_player(topology.source, scenario)
+                scenarios = []
+                for scenario_ref in directive.scenarios:
+                    scenario_path = self._safe_path(docs_dir, scenario_ref)
+                    scenario = load_yaml(scenario_path)
+                    validate_scenario(scenario, topology)
+                    self._claim_flow_id(scenario["id"], page.file.src_path)
+                    scenarios.append(scenario)
+                return render_player(topology.source, scenarios, directive.title)
             except FlowError as exc:
                 message = f"{page.file.src_path}: {exc}"
                 if self.config["validation"] == "strict":

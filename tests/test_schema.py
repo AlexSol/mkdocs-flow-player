@@ -20,9 +20,16 @@ def test_state_enum_matches_the_parser():
     assert set(SCHEMA["$defs"]["state"]["enum"]) == ALLOWED_STATES
 
 
-@pytest.mark.parametrize("name", ["cdc-normal.yaml", "cdc-target-offline.yaml"])
+@pytest.mark.parametrize("name", sorted(path.name for path in EXAMPLES.glob("*.yaml")))
 def test_bundled_example_scenarios_conform(name):
     VALIDATOR.validate(yaml.safe_load((EXAMPLES / name).read_text(encoding="utf-8")))
+
+
+def test_edge_disambiguators_are_valid():
+    VALIDATOR.validate({
+        "id": "x",
+        "steps": [{"edge": {"from": "A", "to": "B", "nth": 2, "label": "retry"}}],
+    })
 
 
 @pytest.mark.parametrize("scenario", [
@@ -40,6 +47,8 @@ def test_bundled_example_scenarios_conform(name):
     {"id": "  ", "steps": [{"node": "A"}]},                        # blank id
     {"id": "x", "title": 5, "steps": [{"node": "A"}]},             # non-string title
     {"id": "x", "steps": [{"edge": {"from": "A"}}]},               # edge missing "to"
+    {"id": "x", "steps": [{"edge": {"from": "A", "to": "B", "nth": 0}}]},     # bad nth
+    {"id": "x", "steps": [{"edge": {"from": "A", "to": "B", "label": ""}}]},  # blank label
 ])
 def test_invalid_scenarios_are_rejected(scenario):
     assert not VALIDATOR.is_valid(scenario)

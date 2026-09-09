@@ -47,7 +47,17 @@
       "required": ["from", "to"],
       "properties": {
         "from": { "type": "string", "minLength": 1 },
-        "to": { "type": "string", "minLength": 1 }
+        "to": { "type": "string", "minLength": 1 },
+        "nth": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "1-based source-order index for parallel edges between the same from/to nodes."
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Mermaid edge label used to disambiguate parallel edges."
+        }
       }
     },
     "step": {

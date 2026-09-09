@@ -7,6 +7,6 @@ the decision in the file and link the commit that implements it.
 
 | # | Proposal | Status |
 | --- | --- | --- |
-| [0001](0001-selectable-scenarios.md) | Selectable scenarios sharing one topology | Draft |
+| [0001](0001-selectable-scenarios.md) | Selectable scenarios sharing one topology | Implemented |
 | [0002](0002-node-metadata-and-doc-links.md) | Node metadata and documentation links | Draft |
-| [0003](0003-edge-labels-and-parallel-edges.md) | Edge labels and parallel edges | Draft |
+| [0003](0003-edge-labels-and-parallel-edges.md) | Edge labels and parallel edges | Implemented |

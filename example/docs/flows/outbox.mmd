@@ -1,0 +1,17 @@
+flowchart LR
+    APP[Application]
+    DB[(Primary DB)]
+    OUTBOX[(Outbox table)]
+    RELAY[Outbox relay]
+    BROKER{{Message broker}}
+    CONSUMER[Consumer]
+    READMODEL[(Read model)]
+
+    APP -->|commit business data| DB
+    APP -->|publish directly| BROKER
+    APP -->|same transaction| OUTBOX
+    OUTBOX -->|poll pending row| RELAY
+    RELAY -->|publish event| BROKER
+    RELAY -->|mark sent| OUTBOX
+    BROKER -->|deliver event| CONSUMER
+    CONSUMER -->|update projection| READMODEL

@@ -1,6 +1,6 @@
 # 0001 — Selectable scenarios sharing one topology
 
-**Status:** Draft — needs decision
+**Status:** Implemented
 **Roadmap item:** "Add selectable scenarios sharing one topology"
 
 ## Problem
@@ -35,7 +35,7 @@ step) and shows two separate players.
 - **C. new directive** `::: interactive-flow-set`. Clean separation but a second
   directive to document and parse.
 
-Leaning **A**.
+Implemented as **A**.
 
 ## Options — UI
 
@@ -45,8 +45,8 @@ Leaning **A**.
   mobile.
 - **Segmented buttons** — same wrap problem.
 
-Leaning **dropdown**, using each scenario's `title` as the option label and a
-group label from a new directive field or the diagram file name.
+Implemented as a dropdown, using each scenario's `title` as the option label and
+an optional directive `title` as the shared group label.
 
 ## Behaviour
 

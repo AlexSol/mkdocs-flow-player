@@ -1,0 +1,68 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/AlexSol/mkdocs-flow-player/main/src/mkdocs_flow_player/schema/scenario.schema.json
+id: outbox-broker-retry
+title: "Solution: broker outage becomes retryable"
+settings:
+  step_duration: 1400
+steps:
+  - node: DB
+    state: success
+    title: Business data is committed
+  - node: OUTBOX
+    state: success
+    title: Event is still durable
+    description: The pending row remains in the database when publishing fails.
+  - edge:
+      from: OUTBOX
+      to: RELAY
+      label: poll pending row
+    action: travel
+  - node: RELAY
+    state: active
+    title: Relay attempts publish
+  - edge:
+      from: RELAY
+      to: BROKER
+      label: publish event
+    action: travel
+  - node: BROKER
+    state: error
+    title: Broker temporarily unavailable
+  - node: RELAY
+    state: waiting
+    title: Relay will retry later
+    description: The outbox row is not marked sent, so it remains visible for another attempt.
+  - node: BROKER
+    state: success
+    title: Broker recovers
+  - edge:
+      from: OUTBOX
+      to: RELAY
+      label: poll pending row
+    action: travel
+  - node: RELAY
+    state: active
+    title: Relay retries the same event
+  - edge:
+      from: RELAY
+      to: BROKER
+      label: publish event
+    action: travel
+  - node: BROKER
+    state: success
+    title: Event published after retry
+  - edge:
+      from: RELAY
+      to: OUTBOX
+      label: mark sent
+    action: travel
+  - node: OUTBOX
+    state: success
+    title: Pending row marked sent
+  - edge:
+      from: BROKER
+      to: CONSUMER
+      label: deliver event
+    action: travel
+  - node: CONSUMER
+    state: success
+    title: Consumer receives the event

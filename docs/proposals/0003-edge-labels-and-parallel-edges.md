@@ -1,6 +1,6 @@
 # 0003 — Edge labels and parallel edges
 
-**Status:** Draft — needs decision
+**Status:** Implemented
 **Roadmap item:** "Support Mermaid edge labels and multiple edges between the same
 nodes robustly"
 
@@ -25,7 +25,7 @@ Two limitations:
 - **C. Mermaid edge IDs** — `A e1@--> B` (new Mermaid syntax). Cleanest source
   side but currently rejected by the parser and ties us to a newer Mermaid.
 
-Leaning **A + B**: accept either `nth` or `label`; `{from, to}` alone stays valid
+Implemented as **A + B**: accept either `nth` or `label`; `{from, to}` alone stays valid
 when there is exactly one A→B edge (backward compatible).
 
 ## Parser / validator changes

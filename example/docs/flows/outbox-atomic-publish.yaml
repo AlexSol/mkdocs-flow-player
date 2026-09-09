@@ -1,0 +1,66 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/AlexSol/mkdocs-flow-player/main/src/mkdocs_flow_player/schema/scenario.schema.json
+id: outbox-atomic-publish
+title: "Solution: outbox makes the event durable"
+settings:
+  step_duration: 1400
+steps:
+  - node: APP
+    state: active
+    title: Request handled
+  - edge:
+      from: APP
+      to: DB
+      label: commit business data
+    action: travel
+  - node: DB
+    state: success
+    title: Business data committed
+  - edge:
+      from: APP
+      to: OUTBOX
+      label: same transaction
+    action: travel
+  - node: OUTBOX
+    state: success
+    title: Event stored atomically
+    description: The event row commits with the business data.
+  - edge:
+      from: OUTBOX
+      to: RELAY
+      label: poll pending row
+    action: travel
+  - node: RELAY
+    state: active
+    title: Relay reads pending event
+  - edge:
+      from: RELAY
+      to: BROKER
+      label: publish event
+    action: travel
+  - node: BROKER
+    state: success
+    title: Event published
+  - edge:
+      from: RELAY
+      to: OUTBOX
+      label: mark sent
+    action: travel
+  - node: OUTBOX
+    state: success
+    title: Outbox row marked sent
+  - edge:
+      from: BROKER
+      to: CONSUMER
+      label: deliver event
+    action: travel
+  - node: CONSUMER
+    state: active
+    title: Consumer handles event
+  - edge:
+      from: CONSUMER
+      to: READMODEL
+      label: update projection
+    action: travel
+  - node: READMODEL
+    state: success
+    title: Projection updated

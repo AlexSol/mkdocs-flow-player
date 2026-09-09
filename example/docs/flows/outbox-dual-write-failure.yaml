@@ -1,0 +1,35 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/AlexSol/mkdocs-flow-player/main/src/mkdocs_flow_player/schema/scenario.schema.json
+id: outbox-dual-write-failure
+title: "Problem: dual write can lose events"
+settings:
+  step_duration: 1400
+steps:
+  - node: APP
+    state: active
+    title: Request handled
+    description: The application changes business state and also needs to notify other systems.
+  - edge:
+      from: APP
+      to: DB
+      label: commit business data
+    action: travel
+  - node: DB
+    state: success
+    title: Business transaction committed
+  - edge:
+      from: APP
+      to: BROKER
+      label: publish directly
+    action: travel
+  - node: BROKER
+    state: error
+    title: Publish failed after commit
+    description: The database is changed, but the event did not reach the broker.
+  - node: READMODEL
+    state: waiting
+    title: Downstream state is stale
+    description: Consumers cannot rebuild the missing event from the broker alone.
+  - node: APP
+    state: error
+    title: No atomic boundary
+    description: The application cannot roll back the already committed database write.

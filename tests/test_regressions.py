@@ -7,7 +7,7 @@ import pytest
 import yaml
 from mkdocs.exceptions import PluginError
 
-from mkdocs_flow_player.parser import FlowError, parse_topology, replace_directives
+from mkdocs_flow_player.parser import Edge, FlowError, parse_topology, replace_directives
 from mkdocs_flow_player.plugin import FlowPlayerPlugin
 from mkdocs_flow_player.renderer import render_player
 from mkdocs_flow_player.serialization import script_json
@@ -24,19 +24,24 @@ TOPOLOGY = parse_topology("flowchart LR\nA --> B")
 def test_inline_and_implicit_nodes(body):
     topology = parse_topology("flowchart LR\n" + body)
     assert topology.nodes == {"A", "B"}
-    assert topology.edges == {("A", "B")}
+    assert topology.edges == (Edge("A", "B", 1, "event" if "|event|" in body else None),)
 
 
 def test_chains_comments_and_semicolons():
     topology = parse_topology("%% comment\nflowchart LR; A --> B[Two] --> C; C -.-> A %% comment\n")
     assert topology.nodes == {"A", "B", "C"}
-    assert topology.edges == {("A", "B"), ("B", "C"), ("C", "A")}
+    assert topology.edges == (Edge("A", "B", 1), Edge("B", "C", 1), Edge("C", "A", 1))
 
 
-@pytest.mark.parametrize("body", ["A & B --> C", "A --> B\nA --> B", "subgraph Group\nA --> B\nend", 'A["unterminated]'])
+@pytest.mark.parametrize("body", ["A & B --> C", "subgraph Group\nA --> B\nend", 'A["unterminated]'])
 def test_unsupported_syntax_has_readable_error(body):
     with pytest.raises(FlowError):
         parse_topology("flowchart LR\n" + body)
+
+
+def test_parallel_edges_keep_source_order_labels_and_indexes():
+    topology = parse_topology("flowchart LR\nA -->|primary| B\nA -.->|retry| B\n")
+    assert topology.edges == (Edge("A", "B", 1, "primary"), Edge("A", "B", 2, "retry"))
 
 
 @pytest.mark.parametrize("fence", ["```", "````", "~~~", "~~~~"])

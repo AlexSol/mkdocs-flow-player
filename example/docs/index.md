@@ -1,18 +1,31 @@
 # MkDocs Flow Player
 
-This page uses one Mermaid topology with two execution scenarios.
+This page uses Mermaid topologies with execution scenarios.
 
-## Normal replication
-
-::: interactive-flow
-diagram: flows/cdc.mmd
-scenario: flows/cdc-normal.yaml
-:::
-
-## Target temporarily offline
+## CDC replication
 
 ::: interactive-flow
+title: CDC replication
 diagram: flows/cdc.mmd
-scenario: flows/cdc-target-offline.yaml
+scenarios:
+  - flows/cdc-normal.yaml
+  - flows/cdc-target-offline.yaml
 :::
 
+## Typical CDC fan-out
+
+::: interactive-flow
+diagram: flows/cdc-use-case.mmd
+scenario: flows/cdc-use-case.yaml
+:::
+
+## Outbox pattern
+
+::: interactive-flow
+title: Outbox pattern
+diagram: flows/outbox.mmd
+scenarios:
+  - flows/outbox-dual-write-failure.yaml
+  - flows/outbox-atomic-publish.yaml
+  - flows/outbox-broker-retry.yaml
+:::

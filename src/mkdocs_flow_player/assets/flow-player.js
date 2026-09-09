@@ -16,7 +16,9 @@
     }) {
       this.element = element;
       this.clock = clock;
-      this.scenario = JSON.parse(element.querySelector(".flow-player__scenario").textContent);
+      const scenarioData = JSON.parse(element.querySelector(".flow-player__scenario").textContent);
+      this.scenarios = Array.isArray(scenarioData) ? scenarioData : [scenarioData];
+      this.scenario = this.scenarios[0];
       this.source = JSON.parse(element.querySelector(".flow-player__mermaid").textContent);
       this.currentStep = -1;
       this.playing = false;
@@ -26,7 +28,9 @@
       this.marker = null;
       this.svg = null;
       this.ready = false;
+      this.scenarioSelect = this.element.querySelector(".flow-player__scenario-select");
       this.duration = this.scenario.settings?.step_duration ?? 1500;
+      this.bindScenarioPicker();
       this.bindControls();
       this.element.addEventListener("keydown", (event) => this.handleKey(event));
       this.updateButtons();
@@ -41,14 +45,26 @@
       const { svg } = await window.mermaid.render(`flow-player-${++renderSequence}`, this.source);
       this.element.querySelector(".flow-player__canvas").innerHTML = svg;
       this.svg = this.element.querySelector("svg");
+      this.validateScenarioSvg();
+      this.ready = true;
+      this.render(false);
+    }
+
+    validateScenarioSvg() {
       for (const step of this.scenario.steps) {
         if (step.node && !this.findNode(step.node)) throw new Error(`SVG node not found: ${step.node}`);
-        if (step.edge && !this.findEdge(step.edge.from, step.edge.to)) {
+        if (step.edge && !this.findEdge(step.edge.from, step.edge.to, step.edge.nth)) {
           throw new Error(`SVG edge not found: ${step.edge.from} → ${step.edge.to}`);
         }
       }
-      this.ready = true;
-      this.render(false);
+    }
+
+    bindScenarioPicker() {
+      if (!this.scenarioSelect) return;
+      this.scenarioSelect.addEventListener("change", () => {
+        const next = this.scenarios[Number(this.scenarioSelect.value)];
+        if (next && this.ready) this.selectScenario(next);
+      });
     }
 
     bindControls() {
@@ -60,8 +76,18 @@
       }
     }
 
+    selectScenario(scenario) {
+      this.pause();
+      this.scenario = scenario;
+      this.duration = this.scenario.settings?.step_duration ?? 1500;
+      this.element.dataset.flowId = this.scenario.id;
+      this.validateScenarioSvg();
+      this.goTo(-1, false);
+    }
+
     handleKey(event) {
       if (!this.ready || event.ctrlKey || event.metaKey || event.altKey) return;
+      if (["SELECT", "INPUT", "TEXTAREA"].includes(event.target?.tagName)) return;
       const moves = {
         ArrowRight: "next", ArrowDown: "next",
         ArrowLeft: "previous", ArrowUp: "previous",
@@ -169,7 +195,7 @@
         node.classList.remove(...STATES.map((state) => `flow-state-${state}`));
         node.classList.add(`flow-state-${step.state ?? "active"}`);
       } else if (step.edge && animate) {
-        this.animateEdge(step.edge.from, step.edge.to);
+        this.animateEdge(step.edge.from, step.edge.to, step.edge.nth);
       }
     }
 
@@ -182,18 +208,19 @@
       });
     }
 
-    findEdge(from, to) {
+    findEdge(from, to, nth = 1) {
       const edgeId = `L_${from}_${to}`;
-      const edgePattern = new RegExp(`(?:^|[-_:])${escapeRegExp(edgeId)}_\\d+$`);
+      const edgeIndex = Number.isInteger(nth) && nth > 0 ? nth - 1 : 0;
+      const edgePattern = new RegExp(`(?:^|[-_:])${escapeRegExp(edgeId)}_${edgeIndex}$`);
       return Array.from(this.svg.querySelectorAll("path")).find((path) => {
-        if (path.dataset?.id === edgeId) return true;
+        if (path.dataset?.id === edgeId && Number(path.dataset?.edgeIndex ?? edgeIndex) === edgeIndex) return true;
         return edgePattern.test(path.id);
       });
     }
 
-    animateEdge(from, to) {
+    animateEdge(from, to, nth) {
       if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
-      this.path = this.findEdge(from, to);
+      this.path = this.findEdge(from, to, nth);
       this.pathLength = this.path.getTotalLength();
       this.marker = document.createElementNS("http://www.w3.org/2000/svg", "circle");
       this.marker.setAttribute("r", "6");
@@ -233,7 +260,7 @@
       this.element.querySelector(".flow-player__counter").textContent = step
         ? `Step ${this.currentStep + 1}/${this.scenario.steps.length}` : "Ready";
       this.element.querySelector(".flow-player__step-title").textContent = step
-        ? (step.title ?? `Step ${this.currentStep + 1}`) : "Select Next to start";
+        ? (step.title ?? step.edge?.label ?? `Step ${this.currentStep + 1}`) : "Select Next to start";
       this.element.querySelector(".flow-player__description").textContent = step?.description ?? "";
       const payload = this.element.querySelector(".flow-player__payload");
       const hasPayload = step && Object.prototype.hasOwnProperty.call(step, "payload");

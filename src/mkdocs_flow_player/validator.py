@@ -2,8 +2,62 @@ from __future__ import annotations
 
 from typing import Any
 
-from .parser import ALLOWED_STATES, FlowError, Topology
+from .parser import ALLOWED_STATES, Edge, FlowError, Topology
 from .serialization import json_value
+
+
+def _describe_edge(edge: Edge) -> str:
+    label = f" label={edge.label!r}" if edge.label is not None else ""
+    return f"{edge.left}->{edge.right} nth={edge.index}{label}"
+
+
+def _match_edge(step_index: int, spec: dict[str, Any], topology: Topology) -> Edge:
+    left, right = str(spec["from"]), str(spec["to"])
+    candidates = [edge for edge in topology.edges if edge.left == left and edge.right == right]
+    if not candidates:
+        known = ", ".join(_describe_edge(edge) for edge in topology.edges)
+        raise FlowError(
+            f"Step {step_index} references unknown edge '{left}->{right}'. "
+            f"Known edges: {known or '(none)'}"
+        )
+
+    nth = spec.get("nth")
+    label = spec.get("label")
+    matches = candidates
+    if nth is not None:
+        matches = [edge for edge in matches if edge.index == nth]
+    if label is not None:
+        matches = [edge for edge in matches if edge.label == label]
+
+    if len(matches) == 1:
+        return matches[0]
+
+    if len(matches) > 1:
+        known = ", ".join(_describe_edge(edge) for edge in matches)
+        raise FlowError(
+            f"Step {step_index} references ambiguous edge '{left}->{right}'. "
+            f"Add edge.nth. Candidates: {known}"
+        )
+
+    if nth is not None or label is not None:
+        wanted = []
+        if nth is not None:
+            wanted.append(f"nth={nth}")
+        if label is not None:
+            wanted.append(f"label={label!r}")
+        known = ", ".join(_describe_edge(edge) for edge in candidates)
+        raise FlowError(
+            f"Step {step_index} references edge '{left}->{right}' with {' and '.join(wanted)}, "
+            f"but no matching edge exists. Candidates: {known}"
+        )
+
+    if len(candidates) > 1:
+        known = ", ".join(_describe_edge(edge) for edge in candidates)
+        raise FlowError(
+            f"Step {step_index} references ambiguous edge '{left}->{right}'. "
+            f"Add edge.nth or edge.label. Candidates: {known}"
+        )
+    return candidates[0]
 
 
 def validate_scenario(scenario: dict[str, Any], topology: Topology) -> None:
@@ -64,13 +118,15 @@ def validate_scenario(scenario: dict[str, Any], topology: Topology) -> None:
             raise FlowError(f"Step {index}: state is only allowed for node steps")
         if step.get("action", "travel") != "travel":
             raise FlowError(f"Step {index} action must be travel")
-        if (not isinstance(edge, dict) or set(edge) != {"from", "to"}
-                or any(not isinstance(edge.get(key), str) or not edge[key] for key in ("from", "to"))):
+        if not isinstance(edge, dict) or set(edge) - {"from", "to", "nth", "label"}:
             raise FlowError(f"Step {index} edge requires 'from' and 'to'")
-        pair = (str(edge["from"]), str(edge["to"]))
-        if pair not in topology.edges:
-            known = ", ".join(f"{left}->{right}" for left, right in sorted(topology.edges))
-            raise FlowError(
-                f"Step {index} references unknown edge '{pair[0]}->{pair[1]}'. "
-                f"Known edges: {known or '(none)'}"
-            )
+        if any(not isinstance(edge.get(key), str) or not edge[key] for key in ("from", "to")):
+            raise FlowError(f"Step {index} edge requires 'from' and 'to'")
+        if "nth" in edge and (type(edge["nth"]) is not int or edge["nth"] < 1):
+            raise FlowError(f"Step {index} edge.nth must be a positive integer")
+        if "label" in edge and (not isinstance(edge["label"], str) or not edge["label"]):
+            raise FlowError(f"Step {index} edge.label must be a non-empty string")
+        match = _match_edge(index, edge, topology)
+        edge["nth"] = match.index
+        if match.label is not None and "label" not in edge:
+            edge["label"] = match.label

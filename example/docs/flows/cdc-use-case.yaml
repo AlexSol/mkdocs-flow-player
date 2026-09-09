@@ -1,0 +1,66 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/AlexSol/mkdocs-flow-player/main/src/mkdocs_flow_player/schema/scenario.schema.json
+id: cdc-use-case
+title: A typical use case for CDC
+settings:
+  step_duration: 500
+steps:
+  - node: SOURCE
+    state: active
+    title: Source transaction
+    description: OLTP commits a change that downstream systems need.
+  - edge:
+      from: SOURCE
+      to: QUEUE
+    action: travel
+    title: Change event published
+  - node: QUEUE
+    state: active
+    title: Event queued
+  - edge:
+      from: QUEUE
+      to: SEARCH
+    action: travel
+    title: Index for search
+  - node: SEARCH
+    state: success
+    title: Search index updated
+  - edge:
+      from: QUEUE
+      to: CACHE
+    action: travel
+    title: Refresh cache
+  - node: CACHE
+    state: success
+    title: Cache refreshed
+  - edge:
+      from: QUEUE
+      to: TARGET
+    action: travel
+    title: Replicate to OLTP
+  - node: TARGET
+    state: success
+    title: Target OLTP updated
+  - edge:
+      from: QUEUE
+      to: OLAP
+    action: travel
+    title: Feed analytics
+  - node: OLAP
+    state: success
+    title: OLAP updated
+  - edge:
+      from: QUEUE
+      to: AUDIT
+    action: travel
+    title: Audit event
+  - node: AUDIT
+    state: success
+    title: Audit trail stored
+  - edge:
+      from: QUEUE
+      to: TEAM
+    action: travel
+    title: Notify consumer
+  - node: TEAM
+    state: success
+    title: Dev team received event

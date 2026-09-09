@@ -1,0 +1,17 @@
+flowchart LR
+    SOURCE[(OLTP)]
+    QUEUE[Queue]
+    SEARCH[Full-text search]
+    CACHE[(Cache)]
+    TARGET[(OLTP)]
+    OLAP[OLAP]
+    AUDIT[Audit]
+    TEAM[Another dev team]
+
+    SOURCE --> QUEUE
+    QUEUE --> SEARCH
+    QUEUE --> CACHE
+    QUEUE --> TARGET
+    QUEUE --> OLAP
+    QUEUE --> AUDIT
+    QUEUE --> TEAM
