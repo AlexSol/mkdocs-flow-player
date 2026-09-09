@@ -32,15 +32,9 @@
 - [x] Add real-Mermaid browser smoke test for recovery, playback and error isolation
 - [x] Add GitHub Actions CI for Python tests, package build, MkDocs strict build, JS tests and browser smoke
 
-Verification for this patch: **58 Python tests + 7 JS tests passed**, and the
-example builds with `mkdocs build --strict`. The browser smoke script is added
-but **has not been executed successfully here**: Chromium download timed out,
-and the available remote browser blocked the local test URL. Run the README
-browser commands locally before declaring end-to-end browser compatibility.
-
 ## Next
 
-- [ ] Execute the real-Mermaid browser smoke test in a browser-enabled environment
+- [x] Execute the real-Mermaid browser smoke test in a browser-enabled environment
 - [ ] Watch the first GitHub Actions run and fix any runner-specific failures
 - [ ] Expand browser coverage across themes, mobile layouts and Material navigation
 - [ ] Support Mermaid edge labels and multiple edges between the same nodes robustly
