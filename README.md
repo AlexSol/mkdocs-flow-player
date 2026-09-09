@@ -41,6 +41,27 @@ scenario: flows/cdc-normal.yaml
 
 Paths are resolved from `docs_dir`. Mermaid node IDs are the public API used by
 the scenario. A broken node or edge reference fails `mkdocs build` in strict mode.
+Each scenario `id` must be unique across the whole site; a repeat is reported like
+any other validation error (build failure in `strict`, placeholder in `warning`).
+
+### Config options
+
+| Option | Default | Purpose |
+| --- | --- | --- |
+| `validation` | `strict` | `strict` fails the build on any flow error; `warning` logs it and renders a placeholder. |
+| `mermaid_url` | pinned jsDelivr CDN (Mermaid 11.17.2) | URL or docs-relative path of the Mermaid script. Set to `""` to inject nothing. |
+
+**Offline / vendored Mermaid** — download `mermaid.min.js` into `docs/` and point
+the option at it:
+
+```yaml
+plugins:
+  - flow-player:
+      mermaid_url: assets/mermaid.min.js   # docs/assets/mermaid.min.js
+```
+
+Or set `mermaid_url: ""` and load Mermaid yourself through `extra_javascript` /
+theme overrides. The plugin's own `flow-player.js` and `.css` are always injected.
 
 ## Worked example
 
@@ -192,6 +213,32 @@ Payload accepts JSON-compatible values, including `false`, `0` and `null`.
 YAML dates/timestamps become ISO strings; NaN/Infinity, binary values, sets,
 non-string object keys, cyclic aliases and nesting beyond 64 levels are rejected.
 
+### Editor autocomplete
+
+A JSON Schema for the scenario file ships with the package at
+[`src/mkdocs_flow_player/schema/scenario.schema.json`](src/mkdocs_flow_player/schema/scenario.schema.json).
+Point the [YAML language server](https://github.com/redhat-developer/yaml-language-server)
+(built into the VS Code *YAML* extension) at it with a modeline at the top of a
+scenario file:
+
+```yaml
+# yaml-language-server: $schema=https://raw.githubusercontent.com/AlexSol/mkdocs-flow-player/main/src/mkdocs_flow_player/schema/scenario.schema.json
+id: normal-replication
+...
+```
+
+or map it in `settings.json` for all `flows/*.yaml`:
+
+```json
+"yaml.schemas": {
+  "https://raw.githubusercontent.com/AlexSol/mkdocs-flow-player/main/src/mkdocs_flow_player/schema/scenario.schema.json": "docs/**/flows/*.yaml"
+}
+```
+
+The schema validates structure only. Node and edge references are checked against
+the topology during `mkdocs build`. `from mkdocs_flow_player.schema import
+scenario_schema` returns the parsed schema for other tooling.
+
 ### Supported Mermaid syntax
 
 The build-time validator deliberately supports a **flowchart subset**, not every
@@ -232,6 +279,13 @@ This does not sandbox the rest of a MkDocs site: publish only reviewed documenta
 - Manual Next/Previous stops autoplay. Play after completed autoplay restarts.
 - A failed player does not prevent other players on the page from initializing.
 
+Keyboard: the player is a labelled `role="group"` and the diagram is a focusable
+`role="img"`. With focus anywhere inside it, <kbd>&rarr;</kbd>/<kbd>&darr;</kbd>
+step forward, <kbd>&larr;</kbd>/<kbd>&uarr;</kbd> step back, <kbd>Home</kbd> resets
+and <kbd>End</kbd> jumps to the last step. A control that disables itself at an end
+of the range hands focus to Play. The details panel is an `aria-live` region, so
+each step is announced.
+
 ### Tests
 
 ```bash
@@ -256,8 +310,8 @@ The browser test expects the built example and downloads Mermaid through the sam
 CDN URL as the example. For an offline run, set `MERMAID_TEST_SCRIPT` to a local
 copy of that upstream script. `CHROMIUM_EXECUTABLE` optionally selects an installed
 Chromium binary. The npm dependencies are development-only, not plugin runtime
-dependencies. The CDN is pinned to Mermaid 11.17.2; override
-`mermaid_url` in the plugin config to use another compatible build.
+dependencies. The CDN is pinned to Mermaid 11.17.2; override `mermaid_url` in the
+plugin config to use another compatible build or a [vendored copy](#config-options).
 
 ## Design constraints
 

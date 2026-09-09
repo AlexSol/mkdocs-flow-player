@@ -68,6 +68,35 @@ test('latest node state wins; Previous and Reset replay deterministically', () =
   assert.equal(player.currentStep, -1);
 });
 
+test('keyboard: arrows step, Home resets, End jumps to the last step', () => {
+  const { player } = fixture([{ node: 'A' }, { node: 'A', state: 'success' }, { node: 'B' }]);
+  const press = (key, extra = {}) => player.handleKey({ key, preventDefault() {}, ...extra });
+  press('ArrowRight');
+  assert.equal(player.currentStep, 0);
+  press('ArrowDown');
+  assert.equal(player.currentStep, 1);
+  press('ArrowLeft');
+  assert.equal(player.currentStep, 0);
+  press('End');
+  assert.equal(player.currentStep, 2);
+  press('ArrowRight');
+  assert.equal(player.currentStep, 2);
+  press('Home');
+  assert.equal(player.currentStep, -1);
+});
+
+test('keyboard: ignored before ready and when a modifier is held', () => {
+  const { player } = fixture([{ node: 'A' }, { node: 'B' }]);
+  player.ready = false;
+  player.handleKey({ key: 'ArrowRight', preventDefault() {} });
+  assert.equal(player.currentStep, -1);
+  player.ready = true;
+  let prevented = false;
+  player.handleKey({ key: 'ArrowRight', metaKey: true, preventDefault() { prevented = true; } });
+  assert.equal(player.currentStep, -1);
+  assert.equal(prevented, false);
+});
+
 test('the traveller renders in an overlay layer so labels never occlude it', () => {
   const { player, diagramRoot } = fixture([{ edge: { from: 'A', to: 'B' } }, { node: 'B' }]);
   player.play();

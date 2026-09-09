@@ -44,6 +44,15 @@ const http = require('node:http');
     await offline.locator('[data-action="reset"]').click();
     assert.equal(await offline.locator('.flow-player__counter').textContent(), 'Ready');
 
+    // Keyboard: focus the diagram and drive playback with the arrow keys.
+    await offline.locator('.flow-player__canvas').focus();
+    await page.keyboard.press('ArrowRight');
+    assert.equal(await offline.locator('.flow-player__counter').textContent(), 'Step 1/9');
+    await page.keyboard.press('End');
+    assert.equal(await offline.locator('.flow-player__counter').textContent(), 'Step 9/9');
+    await page.keyboard.press('Home');
+    assert.equal(await offline.locator('.flow-player__counter').textContent(), 'Ready');
+
     const normal = page.locator('[data-flow-id="normal-replication"]');
     await normal.locator('[data-action="play"]').click();
     await page.waitForFunction(() => document.querySelector('[data-flow-id="normal-replication"] .flow-traveller') !== null);
