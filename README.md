@@ -116,6 +116,9 @@ node --test tests/js/*.test.cjs
 mkdocs build -f example/mkdocs.yml --strict
 ```
 
+GitHub Actions runs these checks on push and pull requests, builds the Python
+package, and runs the browser smoke test with a local Mermaid asset.
+
 The JavaScript unit tests use Node's built-in runner and a deterministic clock
 (no npm installation needed). For browser smoke tests against real Mermaid:
 

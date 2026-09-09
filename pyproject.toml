@@ -24,8 +24,5 @@ flow-player = "mkdocs_flow_player.plugin:FlowPlayerPlugin"
 [tool.hatch.build.targets.wheel]
 packages = ["src/mkdocs_flow_player"]
 
-[tool.hatch.build.targets.wheel.force-include]
-"src/mkdocs_flow_player/assets" = "mkdocs_flow_player/assets"
-
 [tool.pytest.ini_options]
 testpaths = ["tests"]
