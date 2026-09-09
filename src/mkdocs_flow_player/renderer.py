@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import html
-from typing import Any
+from typing import Any, Optional, Union
 from .serialization import script_json
 
 
@@ -9,7 +9,11 @@ def _scenario_title(scenario: dict[str, Any]) -> str:
     return str(scenario.get("title", scenario["id"]))
 
 
-def render_player(diagram: str, scenarios: dict[str, Any] | list[dict[str, Any]], title: str | None = None) -> str:
+def render_player(
+    diagram: str,
+    scenarios: Union[dict[str, Any], list[dict[str, Any]]],
+    title: Optional[str] = None,
+) -> str:
     scenario_list = [scenarios] if isinstance(scenarios, dict) else scenarios
     current = scenario_list[0]
     flow_id = html.escape(str(current["id"]), quote=True)

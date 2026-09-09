@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 import re
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 
 import yaml
 
@@ -21,7 +21,7 @@ class FlowError(ValueError):
 class Directive:
     diagram: str
     scenarios: tuple[str, ...]
-    title: str | None = None
+    title: Optional[str] = None
 
     @property
     def scenario(self) -> str:
@@ -33,7 +33,7 @@ class Edge:
     left: str
     right: str
     index: int
-    label: str | None = None
+    label: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -194,7 +194,7 @@ def _node(text: str, offset: int) -> tuple[str, int]:
     return node, offset
 
 
-def _edge_label(text: str, offset: int) -> tuple[str | None, int]:
+def _edge_label(text: str, offset: int) -> tuple[Optional[str], int]:
     while offset < len(text) and text[offset].isspace():
         offset += 1
     if offset >= len(text) or text[offset] != "|":

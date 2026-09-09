@@ -216,6 +216,23 @@ def test_distinct_flow_ids_coexist(tmp_path):
         assert 'class="flow-player"' in plugin.on_page_markdown(directive, page, cfg, None)
 
 
+def test_selectable_scenarios_render_one_player(tmp_path):
+    (tmp_path / "a.mmd").write_text("flowchart LR\nA --> B")
+    (tmp_path / "one.yaml").write_text("id: one\ntitle: One\nsteps:\n- node: A")
+    (tmp_path / "two.yaml").write_text("id: two\ntitle: Two\nsteps:\n- node: B")
+    directive = "::: interactive-flow\ntitle: Demo\ndiagram: a.mmd\nscenarios:\n- one.yaml\n- two.yaml\n:::"
+    cfg = SimpleNamespace(docs_dir=str(tmp_path))
+    plugin = FlowPlayerPlugin()
+    plugin.load_config({"validation": "strict"})
+    page = SimpleNamespace(file=SimpleNamespace(src_path="index.md"))
+
+    html = plugin.on_page_markdown(directive, page, cfg, None)
+
+    assert html.count('class="flow-player"') == 1
+    assert 'class="flow-player__scenario-select"' in html
+    assert '"id": "one"' in html and '"id": "two"' in html
+
+
 def test_mermaid_url_default_injects_cdn():
     plugin = FlowPlayerPlugin()
     plugin.load_config({})
