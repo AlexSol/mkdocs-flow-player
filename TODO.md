@@ -51,7 +51,7 @@ browser commands locally before declaring end-to-end browser compatibility.
 - [ ] Improve responsive layout and theme integration (Material/light/dark)
 - [ ] Add a configurable, vendored Mermaid option for offline documentation
 - [ ] Add JSON Schema and editor autocomplete for the YAML DSL
-- [ ] Add duplicate flow/scenario ID validation across the site
+- [x] Add duplicate flow/scenario ID validation across the site
 - [ ] Publish package releases to PyPI with changelog and compatibility matrix
 
 ## Explicitly out of scope

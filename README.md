@@ -41,6 +41,8 @@ scenario: flows/cdc-normal.yaml
 
 Paths are resolved from `docs_dir`. Mermaid node IDs are the public API used by
 the scenario. A broken node or edge reference fails `mkdocs build` in strict mode.
+Each scenario `id` must be unique across the whole site; a repeat is reported like
+any other validation error (build failure in `strict`, placeholder in `warning`).
 
 ## Worked example
 

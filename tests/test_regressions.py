@@ -150,6 +150,67 @@ def test_validation_modes_handle_malformed_data(tmp_path, mode, scenario):
         assert 'class="flow-player"' not in result
 
 
+def _flow_fixture(tmp_path, flow_id="shared"):
+    (tmp_path / "a.mmd").write_text("flowchart LR\nA --> B")
+    (tmp_path / "a.yaml").write_text(f"id: {flow_id}\nsteps:\n- node: A")
+    directive = "::: interactive-flow\ndiagram: a.mmd\nscenario: a.yaml\n:::"
+    return directive, SimpleNamespace(docs_dir=str(tmp_path))
+
+
+def test_duplicate_flow_id_across_pages_is_rejected(tmp_path):
+    directive, cfg = _flow_fixture(tmp_path)
+    plugin = FlowPlayerPlugin()
+    plugin.load_config({"validation": "strict"})
+    page = lambda name: SimpleNamespace(file=SimpleNamespace(src_path=name))
+    assert 'class="flow-player"' in plugin.on_page_markdown(directive, page("one.md"), cfg, None)
+    with pytest.raises(PluginError, match="duplicate flow id 'shared'; already defined in one.md"):
+        plugin.on_page_markdown(directive, page("two.md"), cfg, None)
+
+
+def test_duplicate_flow_id_on_the_same_page_names_the_page(tmp_path):
+    directive, cfg = _flow_fixture(tmp_path)
+    plugin = FlowPlayerPlugin()
+    plugin.load_config({"validation": "strict"})
+    page = SimpleNamespace(file=SimpleNamespace(src_path="index.md"))
+    with pytest.raises(PluginError, match="the same page"):
+        plugin.on_page_markdown(f"{directive}\n\n{directive}", page, cfg, None)
+
+
+def test_duplicate_flow_id_warning_mode_renders_placeholder(tmp_path):
+    directive, cfg = _flow_fixture(tmp_path)
+    plugin = FlowPlayerPlugin()
+    plugin.load_config({"validation": "warning"})
+    page = lambda name: SimpleNamespace(file=SimpleNamespace(src_path=name))
+    plugin.on_page_markdown(directive, page("one.md"), cfg, None)
+    result = plugin.on_page_markdown(directive, page("two.md"), cfg, None)
+    assert 'role="alert"' in result and 'class="flow-player"' not in result
+
+
+def test_on_config_resets_the_flow_id_registry(tmp_path):
+    directive, cfg = _flow_fixture(tmp_path)
+    plugin = FlowPlayerPlugin()
+    plugin.load_config({"validation": "strict"})
+    page = SimpleNamespace(file=SimpleNamespace(src_path="index.md"))
+    fresh_config = lambda: SimpleNamespace(docs_dir=str(tmp_path), extra_javascript=[], extra_css=[])
+    plugin.on_config(fresh_config())
+    plugin.on_page_markdown(directive, page, cfg, None)
+    plugin.on_config(fresh_config())
+    assert 'class="flow-player"' in plugin.on_page_markdown(directive, page, cfg, None)
+
+
+def test_distinct_flow_ids_coexist(tmp_path):
+    (tmp_path / "a.mmd").write_text("flowchart LR\nA --> B")
+    (tmp_path / "one.yaml").write_text("id: one\nsteps:\n- node: A")
+    (tmp_path / "two.yaml").write_text("id: two\nsteps:\n- node: B")
+    cfg = SimpleNamespace(docs_dir=str(tmp_path))
+    plugin = FlowPlayerPlugin()
+    plugin.load_config({"validation": "strict"})
+    page = SimpleNamespace(file=SimpleNamespace(src_path="index.md"))
+    for name in ("one", "two"):
+        directive = f"::: interactive-flow\ndiagram: a.mmd\nscenario: {name}.yaml\n:::"
+        assert 'class="flow-player"' in plugin.on_page_markdown(directive, page, cfg, None)
+
+
 def test_warning_message_escaped(tmp_path):
     plugin = FlowPlayerPlugin()
     plugin.load_config({"validation": "warning"})
